@@ -39,20 +39,21 @@ kbd{font-family:'Fredoka';font-weight:600;font-size:.62em;padding:.12em .45em;bo
 .actions{display:flex;gap:1.2vw;justify-content:flex-end;align-items:center;margin-top:1.6vw}
 
 /* title */
-.titlecard{padding:2.6vw 3vw 2.4vw}
-.logo{font-family:'Fredoka';font-weight:700;font-size:7.6vw;line-height:.9;letter-spacing:.01em;display:flex;gap:1.6vw;align-items:baseline}
+.titlecard{padding:2vw 2.8vw 1.8vw}
+.modedesc{font-size:1.3vw;color:#7a45e6;text-align:right;margin:-.2vw 0 .5vw}
+.logo{font-family:'Fredoka';font-weight:700;font-size:6.4vw;line-height:.9;letter-spacing:.01em;display:flex;gap:1.6vw;align-items:baseline}
 .logo span{background-clip:text;-webkit-background-clip:text;color:transparent;filter:drop-shadow(0 .32vw 0 #fff) drop-shadow(0 .7vw .9vw rgba(40,70,150,.25))}
 .logo .mic{background-image:linear-gradient(180deg,#ffb067 0%,#ff5f6d 60%,#ef3d63 100%)}
 .logo .drop{background-image:linear-gradient(180deg,#7fd0ff 0%,#4d8dff 60%,#3a62ea 100%)}
-.tag{font-size:2.05vw;margin:1vw 0 1.4vw;color:#33468a}
-.rules{list-style:none;display:grid;gap:.75vw;margin-bottom:1.6vw}
+.tag{font-size:1.9vw;margin:.7vw 0 1vw;color:#33468a}
+.rules{list-style:none;display:grid;gap:.55vw;margin-bottom:1.1vw}
 .rules li{font-size:1.65vw;display:flex;align-items:center;gap:1vw;color:#2b3b70}
 .rules li b{font-family:'Fredoka';font-weight:700;width:2.4vw;height:2.4vw;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:1.35vw;flex:none}
-.rules li:nth-child(1) b{background:#4d96ff}.rules li:nth-child(2) b{background:#2fcf8f}.rules li:nth-child(3) b{background:#ff5f6d}
+.rules li:nth-child(1) b{background:#4d96ff}.rules li:nth-child(2) b{background:#2fcf8f}.rules li:nth-child(3) b{background:#ff5f6d}.rules li:nth-child(4) b{background:#b07cff}
 .rules em{font-style:normal;color:#ff4f6d}
-.row{display:flex;align-items:center;justify-content:space-between;padding:.75vw 0;border-top:.12vw dashed rgba(77,141,255,.25);font-size:1.6vw}
+.row{display:flex;align-items:center;justify-content:space-between;padding:.55vw 0;border-top:.12vw dashed rgba(77,141,255,.25);font-size:1.6vw}
 .seg{display:flex;background:#e9f2ff;border-radius:3vw;padding:.3vw}
-.seg button{font-size:1.45vw;padding:.45vw 1.4vw;border-radius:3vw;color:#5b6c9c;transition:all .2s}
+.seg button{font-size:1.35vw;padding:.4vw 1.1vw;border-radius:3vw;color:#5b6c9c;transition:all .2s}
 .seg button.on{background:#fff;color:#1d2b53;box-shadow:0 .25vw .7vw rgba(40,90,160,.2)}
 .toggle{width:4.6vw;height:2.5vw;border-radius:2vw;background:#d5def0;position:relative;transition:background .2s}
 .toggle::after{content:'';position:absolute;top:.3vw;left:.3vw;width:1.9vw;height:1.9vw;border-radius:50%;background:#fff;box-shadow:0 .2vw .5vw rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.3,1.5,.5,1)}
@@ -67,6 +68,28 @@ kbd{font-family:'Fredoka';font-weight:600;font-size:.62em;padding:.12em .45em;bo
 #card.out{transform:rotateY(82deg) scale(.92);opacity:.35}
 #card img{width:100%;height:100%;object-fit:cover;display:block}
 #answer{position:absolute;left:50%;bottom:5%;transform:translate(-50%,40%) scale(.5);opacity:0;color:#fff;font-family:'Fredoka';font-weight:700;font-size:5.6vw;padding:.3vw 3.4vw .6vw;border-radius:8vw;white-space:nowrap;background:linear-gradient(180deg,#43e3a3,#16b97c);box-shadow:0 .6vw 0 #0f9663,0 1.8vw 3.4vw rgba(16,120,80,.4);transition:all .25s cubic-bezier(.3,1.7,.5,1);letter-spacing:.01em}
+#answer.spell{font-size:3.6vw;letter-spacing:.06em;padding:.6vw 2.6vw .8vw;background:linear-gradient(180deg,#c49bff,#8a5cf0);box-shadow:0 .6vw 0 #6a3fd0,0 1.8vw 3.4vw rgba(110,60,200,.4)}
+#modeTag{position:absolute;left:2%;top:3.5%;font-size:1.7vw;color:#fff;padding:.35vw 1.2vw;border-radius:3vw;background:#4d96ff;box-shadow:0 .3vw 0 #2f6fd6}
+#modeTag .spl,#modeTag .prt{display:none}
+body.spelling #modeTag{background:#8a5cf0;box-shadow:0 .3vw 0 #6a3fd0;animation:wig 1.6s ease-in-out infinite}
+body.spelling #modeTag .say{display:none}
+body[data-level=part] #modeTag .prt{display:inline} body[data-level=full] #modeTag .spl{display:inline}
+body[data-level=part] #modeTag{background:#ff9a3d;box-shadow:0 .3vw 0 #e0761a}
+body[data-level=part] .spellchip{background:linear-gradient(180deg,#ffc27a,#ff9a3d)!important}
+#hint{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);display:flex;gap:.45vw;align-items:flex-end;background:rgba(255,255,255,.95);padding:.7vw 1.4vw;border-radius:1.4vw;box-shadow:0 .5vw 1.4vw rgba(30,70,140,.2);transition:opacity .2s;white-space:nowrap}
+#hint b{font-family:'Fredoka';font-weight:700;font-size:3.6vw;line-height:1;color:#1d2b53;min-width:2.4vw;text-align:center}
+#hint b.bl{border-bottom:.45vw solid #ff9a3d;height:3.6vw;background:rgba(255,154,61,.12);border-radius:.4vw .4vw 0 0}
+#hint i.sp{width:1.6vw}
+body.ansOn #hint{opacity:0}
+#answer u{text-decoration:none;color:#ffe066;text-shadow:0 .2vw 0 rgba(0,0,0,.2)}
+.lastword strong.spell{font-size:2.6vw}
+@keyframes wig{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg) scale(1.05)}}
+.spellchip{display:none!important}
+body.spelling .spellchip{display:flex!important;background:linear-gradient(180deg,#c49bff,#8a5cf0)}
+body.spelling .spellchip b{color:#fff;font-size:1.5vw}
+#countdown .sub.spell{color:#7a45e6;font-size:2.6vw}
+#countdown .sub small{font-size:.65em;color:#5b6c9c}
+.lastword strong{letter-spacing:.03em}
 #answer.show{opacity:1;transform:translate(-50%,0) scale(1)}
 .controls{display:flex;gap:1.1vw;justify-content:flex-end;margin-top:1.7vw}
 
@@ -128,7 +151,7 @@ kbd{font-family:'Fredoka';font-weight:600;font-size:.62em;padding:.12em .45em;bo
 </style>
 </head>
 <body>
-<div id="stage" class="hidden"><img id="cardImg" alt=""><div id="answer"></div></div>
+<div id="stage" class="hidden"><img id="cardImg" alt=""><div id="modeTag"><span class="say">🗣 영어로 말해요!</span><span class="prt">🧩 빈칸 철자를 말해요!</span><span class="spl">🔤 스펠링 전체를 말해요!</span></div><div id="hint" style="display:none"></div><div id="answer"></div></div>
 <canvas id="c"></canvas>
 <div id="vignette"></div>
 
@@ -136,6 +159,7 @@ kbd{font-family:'Fredoka';font-weight:600;font-size:.62em;padding:.12em .45em;bo
 <div id="hud" class="hidden">
   <div class="chip"><span>ROUND</span><b id="hRound">1</b></div>
   <div class="chip"><span>🎤 패스</span><b id="hPass">0</b></div>
+  <div class="chip spellchip"><b>🔤 SPELLING</b></div>
 </div>
 
 <section id="title" class="right">
@@ -147,6 +171,8 @@ kbd{font-family:'Fredoka';font-weight:600;font-size:.62em;padding:.12em .45em;bo
       <li><b>2</b>맞히면 선생님이 다음 단어로 넘기고, 마이크는 옆 친구에게!</li>
       <li><b>3</b>내가 마이크를 들고 있을 때 폭탄이 터지면 탈락!</li>
     </ol>
+    <div class="row"><span>게임 모드</span><div class="seg" id="segMode"><button data-v="game">실전</button><button data-v="word">단어 연습</button><button data-v="part">빈칸 연습</button><button data-v="full">스펠링 연습</button></div></div>
+    <div class="modedesc" id="modeDesc"></div>
     <div class="row"><span>폭탄 시간</span><div class="seg" id="segTime"><button data-v="short">짧게</button><button data-v="normal">보통</button><button data-v="long">길게</button></div></div>
     <div class="row"><span>넘길 때 정답 잠깐 보여주기</span><button class="toggle" id="tgFlash" aria-label="정답 보여주기"></button></div>
     <div class="row"><span>배경음악</span><button class="toggle" id="tgMusic" aria-label="배경음악"></button></div>
@@ -217,8 +243,26 @@ const WORDS = [
   {id:'w21', ko:'동물원 사육사', en:'zookeeper'},
 ];
 const RANGES = { short:[15,35], normal:[25,55], long:[40,80] };
+// rounds 1-3: say the word | 4-5: say the missing letters | 6+: spell the whole word. From round 4 the bomb time is x2.
+const PART_FROM = 4, FULL_FROM = 6;
+let level = 'word', spelling = false, mask = new Set();
+const levelOf = r => settings.mode && settings.mode !== 'game' ? settings.mode : (r >= FULL_FROM ? 'full' : r >= PART_FROM ? 'part' : 'word');
+const spellOut = t => t.toUpperCase().split(' ').map(w => w.split('').join(' ')).join('   ');
+function makeMask(t){
+  const idx = []; for (let i=1;i<t.length;i++) if (/[a-z]/i.test(t[i])) idx.push(i);
+  const k = Math.max(1, Math.round(idx.length*0.4)); const m = new Set();
+  while (m.size < Math.min(k, idx.length)) m.add(idx[Math.floor(Math.random()*idx.length)]);
+  return m;
+}
+function hintHTML(t){ return t.toUpperCase().split('').map((c,i) => c === ' ' ? '<i class="sp"></i>' : mask.has(i) ? '<b class="bl"></b>' : `<b>${c}</b>`).join(''); }
+function partAnswerHTML(t){ return t.toUpperCase().split('').map((c,i) => c === ' ' ? '&nbsp;&nbsp;' : mask.has(i) ? `<u>${c}</u>` : c).join(' '); }
+function setHint(w){
+  const el = document.getElementById('hint');
+  if (level === 'part'){ mask = makeMask(ans(w)); el.innerHTML = hintHTML(ans(w)); el.style.display = ''; }
+  else { mask = new Set(); el.innerHTML = ''; el.style.display = 'none'; }
+}
 const KEY = 'micdrop.v1';
-let settings = { time:'normal', flash:true, sound:true, music:true, answers:{}, off:{} };
+let settings = { time:'normal', mode:'game', flash:true, sound:true, music:true, answers:{}, off:{} };
 try { const s = JSON.parse(localStorage.getItem(KEY)||'null'); if (s) settings = Object.assign(settings, s); } catch(e) {}
 if (settings.music === undefined) settings.music = true;
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch(e) {} }
@@ -629,11 +673,15 @@ function showWord(w){
   ui.card.classList.add('out');
   Promise.all([ready, new Promise(r => setTimeout(r, 140))]).then(() => {
     if (id !== swapId) return;
-    ui.cardImg.src = src; ui.card.classList.remove('out'); busy = false;
+    ui.cardImg.src = src; setHint(w); ui.card.classList.remove('out'); busy = false;
   });
 }
-function showAnswer(){ ui.answer.textContent = ans(current); ui.answer.classList.add('show'); }
-function hideAnswer(){ ui.answer.classList.remove('show'); }
+function showAnswer(){
+  const t = ans(current);
+  if (level === 'part') ui.answer.innerHTML = partAnswerHTML(t); else ui.answer.textContent = level === 'full' ? spellOut(t) : t;
+  ui.answer.classList.toggle('spell', spelling); ui.answer.classList.add('show'); document.body.classList.add('ansOn');
+}
+function hideAnswer(){ ui.answer.classList.remove('show'); document.body.classList.remove('ansOn'); }
 function toggleAnswer(){ if (state!=='play' || !current) return; ui.answer.classList.contains('show') ? hideAnswer() : (showAnswer(), sfx.pop()); }
 
 function nextWord(){
@@ -641,7 +689,7 @@ function nextWord(){
   if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; showWord(drawWord()); return; }
   if (busy) return;
   passes++; updHud(); sfx.ding(); MIC.hop = 1;
-  if (settings.flash){ showAnswer(); flashTimer = setTimeout(() => { flashTimer = null; if (state==='play' && !paused) showWord(drawWord()); }, 600); }
+  if (settings.flash){ showAnswer(); flashTimer = setTimeout(() => { flashTimer = null; if (state==='play' && !paused) showWord(drawWord()); }, spelling ? 1100 : 600); }
   else showWord(drawWord());
 }
 
@@ -654,16 +702,20 @@ function startGame(){ sfx.init(); sfx.musicStart(); round = 0; deck = []; startR
 function startRound(){
   cdTimers.forEach(clearTimeout); cdTimers = []; if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; } busy = false;
   round++; passes = 0; elapsed = 0; paused = false; show(ui.pause, false);
-  const r = RANGES[settings.time] || RANGES.normal; duration = rand(r[0], r[1]); maxRange = r[1];
+  level = levelOf(round); spelling = level !== 'word'; const mul = spelling ? 2 : 1;
+  document.body.dataset.level = level;
+  const chip = document.querySelector('.spellchip b'); if (chip) chip.textContent = level === 'full' ? '🔤 전체 스펠링' : '🧩 빈칸 스펠링';
+  const r = RANGES[settings.time] || RANGES.normal; duration = rand(r[0], r[1])*mul; maxRange = r[1]*mul;
+  document.body.classList.toggle('spelling', spelling);
   updHud(); resetBomb(); setScreen('countdown'); state = 'countdown'; sfx.musicStart();
   const seq = ['3','2','1','GO!'];
   seq.forEach((t, i) => cdTimers.push(setTimeout(() => {
-    ui.cd.innerHTML = `<div class="n ${t==='GO!'?'go':''}">${t}</div>${i===0?'<div class="sub">첫 번째 친구, 마이크 준비!</div>':''}`;
+    ui.cd.innerHTML = `<div class="n ${t==='GO!'?'go':''}">${t}</div>${i===0?(level==='full'?'<div class="sub spell">🔤 전체 스펠링 라운드! 철자를 처음부터 끝까지 <small>(폭탄 시간 2배)</small></div>':level==='part'?'<div class="sub spell">🧩 빈칸 스펠링 라운드! 빈칸에 들어갈 철자를 말해요 <small>(폭탄 시간 2배)</small></div>':'<div class="sub">첫 번째 친구, 마이크 준비!</div>'):''}`;
     sfx.beep(t==='GO!');
   }, 300 + i*800)));
   cdTimers.push(setTimeout(() => {
     ui.cd.innerHTML = ''; state = 'play'; setScreen('play');
-    current = null; const w = drawWord(); current = w; ui.cardImg.src = imgSrc(w); hideAnswer();
+    current = null; const w = drawWord(); current = w; ui.cardImg.src = imgSrc(w); setHint(w); hideAnswer();
     tickT = 0.3; heartT = 1; nextScare = rand(6, 11);
     sfx.ignite(); flare = 1.5;
   }, 300 + seq.length*800));
@@ -680,7 +732,8 @@ function explode(){
   setTimeout(() => {
     if (state !== 'boom') return;
     state = 'result';
-    $('resImg').src = imgSrc(current); $('resKo').textContent = current.ko; $('resEn').textContent = ans(current);
+    $('resImg').src = imgSrc(current); $('resKo').textContent = current.ko; $('resEn').textContent = spelling ? spellOut(ans(current)) : ans(current);
+    $('resEn').classList.toggle('spell', spelling);
     $('resStats').textContent = `이번 라운드 · 마이크 패스 ${passes}번 · 폭탄이 버틴 시간 ${Math.round(duration)}초`;
     setScreen('result'); sfx.wahwah(); setTimeout(() => { if (state === 'result') sfx.musicStart(); }, 1900);
   }, 1500);
@@ -814,6 +867,8 @@ requestAnimationFrame(frame);
 function toast(msg){ const t = $('toast'); t.textContent = msg; show(t, true); clearTimeout(toast._t); toast._t = setTimeout(() => show(t, false), 2200); }
 function syncSettingsUI(){
   document.querySelectorAll('#segTime button').forEach(b => b.classList.toggle('on', b.dataset.v === settings.time));
+  document.querySelectorAll('#segMode button').forEach(b => b.classList.toggle('on', b.dataset.v === (settings.mode || 'game')));
+  $('modeDesc').textContent = MODE_DESC[settings.mode || 'game'];
   $('tgFlash').classList.toggle('on', !!settings.flash);
   $('tgSound').classList.toggle('on', !!settings.sound);
   $('tgMusic').classList.toggle('on', !!settings.music);
@@ -828,6 +883,8 @@ function toggleFS(){
   } catch(e) { toast('브라우저의 F11 키로 전체화면을 켜 주세요'); }
 }
 document.querySelectorAll('#segTime button').forEach(b => b.addEventListener('click', () => { settings.time = b.dataset.v; save(); syncSettingsUI(); }));
+document.querySelectorAll('#segMode button').forEach(b => b.addEventListener('click', () => { settings.mode = b.dataset.v; save(); syncSettingsUI(); }));
+const MODE_DESC = { game:'1~3라운드 영어로 말하기 → 4·5라운드 빈칸 철자 → 6라운드부터 전체 스펠링', word:'계속 우리말을 보고 영어 단어로 말해요', part:'빈칸에 들어갈 철자만 말해요 (폭탄 시간 2배)', full:'단어 철자를 처음부터 끝까지 말해요 (폭탄 시간 2배)' };
 $('tgFlash').addEventListener('click', () => { settings.flash = !settings.flash; save(); syncSettingsUI(); });
 $('tgSound').addEventListener('click', toggleSound);
 function toggleMusic(){ settings.music = !settings.music; save(); syncSettingsUI(); sfx.init(); sfx.musicStart(); sfx.musicOn(settings.music); toast(settings.music ? '배경음악 켬' : '배경음악 끔'); }
