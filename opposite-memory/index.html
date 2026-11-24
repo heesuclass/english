@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>반대말 짝 찾기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 교실 모둠 게임, 밝고 또렷하게, 6학년이 멀리서도 읽히게
+   IDEA: 책상 위에 펼친 카드 테이블 — 파란 펠트 위 코랄색 카드 뒷면
+   PICTURE: 카드 판 자체가 화면의 주인공
+   COLOUR and TYPE: 딥 블루 테이블, 코랄 카드 뒷면, 노란 하이라이트 / Fredoka(영어) + Jua(한글)
+   LAYOUT: 위 점수판 띠, 아래 카드 판이 남은 화면을 꽉 채움 */
+:root{color-scheme:light dark;--bg:light-dark(#2343a8,#14205a);--felt:light-dark(#2d52c4,#1b2a72);--ink:#fff;--card:#fffdf6;--cink:#1b1f3b;--back:#ff6b5a;--back2:#e2483a;--gold:#ffd23f;--ok:#2fbf71;--muted:light-dark(#c9d4ff,#9fb0ee)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 Jua,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;overflow:hidden;user-select:none;-webkit-user-select:none}
+button{font:inherit;cursor:pointer;border:0;border-radius:14px;min-height:48px;padding:0 20px;touch-action:manipulation}
+button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.en{font-family:Fredoka,system-ui,sans-serif;font-weight:600}
+.screen{position:fixed;inset:0;display:none;flex-direction:column}
+.screen.on{display:flex}
+/* setup */
+#setup{overflow:auto;align-items:center;padding:24px 16px}
+.panel{width:min(720px,100%);background:var(--felt);border-radius:24px;padding:clamp(20px,4vw,36px);box-shadow:0 12px 0 rgba(0,0,0,.18)}
+h1{font-size:clamp(34px,6vw,50px);line-height:1.05;margin:0 0 6px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 22px}
+.rules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 24px;padding:0;list-style:none;counter-reset:r}
+.rules li{background:rgba(255,255,255,.12);border-radius:14px;padding:12px 10px 12px;font-size:15px;counter-increment:r}
+.rules li::before{content:counter(r);display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--cink);margin-bottom:6px;font-family:Fredoka;font-weight:700}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 18px}
+.row>label{width:100%;font-size:18px}
+.seg button{background:rgba(255,255,255,.14);color:#fff;min-width:56px}
+.seg button.sel{background:var(--gold);color:var(--cink)}
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;width:100%}
+.names input{font:inherit;font-size:17px;height:48px;border-radius:12px;border:0;padding:0 12px;background:#fff;color:var(--cink);width:100%}
+.tog{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.12);color:#fff;padding:0 16px}
+.tog i{width:44px;height:26px;border-radius:13px;background:rgba(0,0,0,.3);position:relative;flex:none;transition:.2s}
+.tog i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s}
+.tog[aria-pressed=true] i{background:var(--ok)}.tog[aria-pressed=true] i::after{left:21px}
+.go{background:var(--gold);color:var(--cink);font-size:24px;min-height:64px;width:100%;margin-top:8px;box-shadow:0 6px 0 #c99d0e}
+.go:active{transform:translateY(4px);box-shadow:0 2px 0 #c99d0e}
+/* game */
+.top{display:flex;gap:8px;align-items:stretch;padding:10px 12px;background:rgba(0,0,0,.18)}
+.players{display:flex;gap:8px;flex:1;overflow-x:auto}
+.pl{flex:1 0 108px;background:rgba(255,255,255,.12);border-radius:14px;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:.25s;border:3px solid transparent}
+.pl b{font-weight:400;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl span{font-family:Fredoka;font-weight:700;font-size:26px}
+.pl.turn{background:var(--gold);color:var(--cink);border-color:#fff;transform:translateY(-1px)}
+.tools{display:flex;gap:8px}
+.tools button{background:rgba(255,255,255,.16);color:#fff;padding:0 14px}
+.turnbar{text-align:center;padding:6px 10px 0;font-size:20px}
+.turnbar em{font-style:normal;color:var(--gold)}
+#board{flex:1;position:relative;margin:8px 12px 12px}
+#grid{position:absolute;inset:0;display:grid;gap:10px;align-content:center;justify-content:center}
+.c{perspective:900px;position:relative;padding:0;background:none;min-height:0;border-radius:16px}
+.c .in{position:absolute;inset:0;transition:transform .45s;transform-style:preserve-3d}
+.c.up .in,.c.gone .in{transform:rotateY(180deg)}
+.f,.b{position:absolute;inset:0;border-radius:16px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+.b{background:radial-gradient(circle at 50% 50%,transparent 0 22%,rgba(255,255,255,.0) 22%),repeating-linear-gradient(45deg,var(--back) 0 10px,var(--back2) 10px 20px);border:5px solid #fff}
+.b svg{width:42%;height:auto}
+.f{background:var(--card);color:var(--cink);transform:rotateY(180deg);padding:6px;border:5px solid #fff}
+.f .w{font-size:var(--wf,30px);line-height:1.05;text-align:center;overflow-wrap:anywhere}
+.f .k{font-size:var(--kf,15px);color:#6a6f8c;margin-top:4px;text-align:center}
+.c.gone{visibility:hidden;transition:visibility 0s .5s}
+.c.hit .f{border-color:var(--ok);background:#e9fbf1}
+.c.miss .f{border-color:var(--back)}
+/* check dialog */
+.veil{position:fixed;inset:0;background:rgba(10,16,48,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:5}
+.veil.on{display:flex}
+.dlg{background:var(--card);color:var(--cink);border-radius:24px;padding:24px;width:min(620px,100%);text-align:center;box-shadow:0 14px 0 rgba(0,0,0,.25)}
+.dlg h2{margin:0 0 4px;font-size:clamp(24px,4vw,32px);font-weight:400}
+.dlg p{margin:0 0 16px;color:#5b6080}
+.pair{display:flex;align-items:center;justify-content:center;gap:12px;margin:8px 0 18px;flex-wrap:wrap}
+.say{background:#eef2ff;color:var(--cink);border-radius:16px;padding:10px 16px;display:flex;flex-direction:column;align-items:center;min-width:150px}
+.say .en{font-size:clamp(28px,5vw,40px)}
+.say small{color:#6a6f8c;font-size:15px}
+.say svg{width:22px;height:22px;margin-top:4px}
+.vs{font-size:30px;color:#9aa0c0}
+.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btns button{font-size:20px;min-height:58px;flex:1 1 200px}
+.yes{background:var(--ok);color:#fff}.no{background:var(--back);color:#fff}.neutral{background:#e3e7f7;color:var(--cink)}
+.res{font-size:clamp(30px,6vw,44px);margin:4px 0 10px}
+.res.good{color:var(--ok)}.res.bad{color:var(--back2)}
+/* end */
+#end{align-items:center;justify-content:center;padding:16px;overflow:auto}
+.rank{list-style:none;padding:0;margin:10px 0 22px;display:grid;gap:8px}
+.rank li{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.12);border-radius:14px;padding:10px 16px;font-size:20px}
+.rank li.win{background:var(--gold);color:var(--cink)}
+.rank .n{font-family:Fredoka;font-weight:700;width:32px}
+.rank .s{margin-left:auto;font-family:Fredoka;font-weight:700;font-size:26px}
+.crown{width:min(180px,40vw);display:block;margin:0 auto 8px}
+.review{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 20px}
+.review span{background:rgba(255,255,255,.14);border-radius:10px;padding:4px 10px;font-size:15px}
+@media(max-width:600px){.rules{grid-template-columns:repeat(2,minmax(0,1fr))}.tools button{padding:0 10px}.pl{flex-basis:92px}}
+@media(prefers-reduced-motion:reduce){.c .in{transition:none}}
+</style>
+</head>
+<body>
+
+<section id="setup" class="screen on">
+  <div class="panel">
+    <h1>반대말 짝 찾기</h1>
+    <p class="sub">Lesson 11 · Memory Card Game — 모둠 친구들과 태블릿 하나로 함께해요</p>
+    <ol class="rules">
+      <li>카드 두 장을 뒤집어요.</li>
+      <li>두 단어를 영어로 소리 내어 읽어요.</li>
+      <li>반대말이면 카드를 가져가요.</li>
+      <li>짝이 아니면 다시 뒤집어요.</li>
+    </ol>
+    <div class="row"><label>모둠 인원</label><div class="seg" id="segN"></div></div>
+    <div class="row"><label>이름 (눌러서 바꿀 수 있어요)</label><div class="names" id="names"></div></div>
+    <div class="row"><label>카드 수</label><div class="seg" id="segP"></div></div>
+    <div class="row">
+      <button class="tog" id="togK" aria-pressed="true"><i></i>한글 뜻 보이기</button>
+      <button class="tog" id="togA" aria-pressed="true"><i></i>짝 찾으면 한 번 더</button>
+    </div>
+    <button class="go" id="start">게임 시작!</button>
+  </div>
+</section>
+
+<section id="game" class="screen">
+  <div class="top">
+    <div class="players" id="players"></div>
+    <div class="tools"><button id="btnQuit" aria-label="처음으로">처음으로</button></div>
+  </div>
+  <div class="turnbar" id="turnbar"></div>
+  <div id="board"><div id="grid"></div></div>
+</section>
+
+<section id="end" class="screen">
+  <div class="panel" style="text-align:center">
+    <svg class="crown" viewBox="0 0 200 130" aria-hidden="true">
+      <ellipse cx="100" cy="122" rx="78" ry="7" fill="rgba(0,0,0,.2)"/>
+      <path d="M20 40 L55 80 L100 18 L145 80 L180 40 L165 112 H35 Z" fill="#ffd23f" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M35 98 H165" stroke="#e8b412" stroke-width="8"/>
+      <circle cx="20" cy="40" r="9" fill="#ff6b5a"/><circle cx="100" cy="18" r="10" fill="#ff6b5a"/><circle cx="180" cy="40" r="9" fill="#ff6b5a"/>
+    </svg>
+    <h1 id="winTitle"></h1>
+    <ol class="rank" id="rank"></ol>
+    <p class="sub">오늘 찾은 반대말</p>
+    <div class="review" id="review"></div>
+    <div class="btns">
+      <button class="go" id="again" style="flex:1 1 200px">한 판 더!</button>
+      <button class="neutral" id="home" style="flex:1 1 200px;font-size:20px;min-height:64px">설정 바꾸기</button>
+    </div>
+  </div>
+</section>
+
+<div class="veil" id="veil"><div class="dlg" id="dlg"></div></div>
+<div class="veil" id="veilQ"><div class="dlg">
+  <h2>게임을 그만할까요?</h2><p>지금까지 점수는 사라져요.</p>
+  <div class="btns"><button class="neutral" id="qNo">계속하기</button><button class="no" id="qYes">처음으로</button></div>
+</div></div>
+
+<script>
+{
+const PAIRS=[
+ ["interesting","흥미로운","boring","지루한"],
+ ["cheap","값이 싼","expensive","비싼"],
+ ["safe","안전한","dangerous","위험한"],
+ ["bright","밝은","dark","어두운"],
+ ["soft","부드러운","hard","딱딱한"],
+ ["good","좋은","bad","나쁜"],
+ ["right","맞는, 옳은","wrong","틀린, 잘못된"],
+ ["same","같은","different","다른"],
+ ["real","진짜의","fake","가짜의"],
+ ["quiet","조용한","loud","시끄러운"]
+];
+const SPK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>';
+const BACK='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff"/><text x="50" y="66" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="46" fill="#e2483a">?</text></svg>';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let st={n:4,names:["친구 1","친구 2","친구 3","친구 4","친구 5","친구 6"],pairs:10,kor:true,again:true};
+try{const s=JSON.parse(localStorage.getItem("opp-memory")||"null");if(s)st=Object.assign(st,s)}catch(e){}
+const save=()=>{try{localStorage.setItem("opp-memory",JSON.stringify(st))}catch(e){}};
+let G=null;
+
+function seg(el,opts,key,fmt){
+  el.innerHTML=opts.map(v=>`<button data-v="${v}" class="${st[key]==v?'sel':''}">${fmt(v)}</button>`).join('');
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;st[key]=+b.dataset.v;save();renderSetup()};
+}
+function renderSetup(){
+  seg($('#segN'),[2,3,4,5,6],'n',v=>v+'명');
+  seg($('#segP'),[6,8,10],'pairs',v=>v*2+'장');
+  const box=$('#names');
+  box.innerHTML=Array.from({length:st.n},(_,i)=>`<input id="nm${i}" maxlength="8" value="${esc(st.names[i])}" aria-label="${i+1}번 친구 이름">`).join('');
+  box.querySelectorAll('input').forEach((inp,i)=>inp.oninput=()=>{st.names[i]=inp.value;save()});
+  $('#togK').setAttribute('aria-pressed',st.kor);$('#togA').setAttribute('aria-pressed',st.again);
+}
+$('#togK').onclick=()=>{st.kor=!st.kor;save();renderSetup()};
+$('#togA').onclick=()=>{st.again=!st.again;save();renderSetup()};
+
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function speak(t){
+  try{const sy=window.speechSynthesis;if(!sy)return;sy.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=.85;
+    const v=sy.getVoices().find(v=>/^en(-|_)US/i.test(v.lang))||sy.getVoices().find(v=>/^en/i.test(v.lang));if(v)u.voice=v;sy.speak(u)}catch(e){}
+}
+
+function startGame(){
+  const used=shuffle(PAIRS.slice()).slice(0,st.pairs);
+  const cards=[];
+  used.forEach((p,i)=>{cards.push({id:i,w:p[0],k:p[1]});cards.push({id:i,w:p[2],k:p[3]})});
+  G={cards:shuffle(cards).map((c,i)=>Object.assign(c,{i,up:false,gone:false})),
+     players:Array.from({length:st.n},(_,i)=>({name:(st.names[i]||'').trim()||`친구 ${i+1}`,score:0,got:[]})),
+     turn:0,open:[],lock:false,left:st.pairs,found:[]};
+  show('game');buildGrid();renderTop();
+}
+function renderTop(){
+  $('#players').innerHTML=G.players.map((p,i)=>`<div class="pl ${i===G.turn?'turn':''}"><b>${esc(p.name)}</b><span>${p.score}</span></div>`).join('');
+  $('#turnbar').innerHTML=`<em>${esc(G.players[G.turn].name)}</em> 차례 — 카드 두 장을 뒤집어요`;
+}
+function buildGrid(){
+  const g=$('#grid');
+  g.innerHTML=G.cards.map(c=>`<button class="c" id="c${c.i}" data-i="${c.i}" aria-label="카드 ${c.i+1}"><div class="in"><div class="b">${BACK}</div><div class="f"><div class="w en">${esc(c.w)}</div>${st.kor?`<div class="k">${esc(c.k)}</div>`:''}</div></div></button>`).join('');
+  layout();
+}
+function layout(){
+  if(!G)return;
+  const b=$('#board'),W=b.clientWidth,H=b.clientHeight,N=G.cards.length,gap=10,ar=.78;
+  let best={s:0,c:1};
+  for(let c=1;c<=N;c++){const r=Math.ceil(N/c);let w=(W-gap*(c-1))/c,h=(H-gap*(r-1))/r;if(w/h>ar)w=h*ar;else h=w/ar;if(w>best.s)best={s:w,c,h}}
+  const g=$('#grid');
+  g.style.gridTemplateColumns=`repeat(${best.c},${Math.floor(best.s)}px)`;
+  g.style.gridAutoRows=Math.floor(best.h)+'px';
+  g.style.setProperty('--wf',Math.max(14,Math.min(40,best.s*.17))+'px');
+  g.style.setProperty('--kf',Math.max(12,Math.min(18,best.s*.095))+'px');
+}
+const ro=new ResizeObserver(layout);ro.observe($('#board'));
+
+$('#grid').onclick=e=>{
+  const el=e.target.closest('.c');if(!el||!G||G.lock)return;
+  const c=G.cards[+el.dataset.i];if(c.up||c.gone)return;
+  c.up=true;el.classList.add('up');G.open.push(c);speak(c.w);
+  if(G.open.length===2){G.lock=true;setTimeout(askRead,650)}
+};
+
+function askRead(){
+  const [a,b]=G.open;
+  $('#dlg').innerHTML=`<h2>${esc(G.players[G.turn].name)}, 소리 내어 읽어 볼까요?</h2><p>단어를 누르면 소리를 들을 수 있어요</p>
+   <div class="pair"><button class="say" data-w="${esc(a.w)}"><span class="en">${esc(a.w)}</span>${st.kor?`<small>${esc(a.k)}</small>`:''}${SPK}</button>
+   <span class="vs">↔</span>
+   <button class="say" data-w="${esc(b.w)}"><span class="en">${esc(b.w)}</span>${st.kor?`<small>${esc(b.k)}</small>`:''}${SPK}</button></div>
+   <p>두 단어는 반대말일까요?</p>
+   <div class="btns"><button class="yes" data-g="1">반대말이에요!</button><button class="no" data-g="0">반대말이 아니에요</button></div>`;
+  $('#veil').classList.add('on');
+}
+$('#dlg').onclick=e=>{
+  const s=e.target.closest('.say');if(s){speak(s.dataset.w);return}
+  const g=e.target.closest('[data-g]');if(g){judge(g.dataset.g==='1');return}
+  if(e.target.closest('#next'))next();
+};
+function judge(guess){
+  const [a,b]=G.open,ok=a.id===b.id,right=guess===ok;
+  G.last=ok;
+  [a,b].forEach(c=>$('#c'+c.i).classList.add(ok?'hit':'miss'));
+  let msg,cls,detail;
+  if(ok){msg='짝을 찾았어요!';cls='good';detail=`<span class="en">${esc(a.w)}</span> ↔ <span class="en">${esc(b.w)}</span> 카드를 가져가요.`+(st.again?' 한 번 더!':'');
+    if(!guess)detail='사실 반대말이었어요! '+detail}
+  else{msg=right?'맞아요, 짝이 아니에요':'아쉬워요, 짝이 아니에요';cls='bad';
+    const pa=G.cards.find(c=>c.id===a.id&&c!==a),pb=G.cards.find(c=>c.id===b.id&&c!==b);
+    detail=`카드를 다시 뒤집고 다음 친구 차례예요.`}
+  $('#dlg').innerHTML=`<div class="res ${cls}">${msg}</div><p>${detail}</p><div class="btns"><button class="neutral" id="next" style="background:${ok?'var(--ok)':'var(--gold)'};color:${ok?'#fff':'var(--cink)'}">확인</button></div>`;
+}
+function next(){
+  $('#veil').classList.remove('on');
+  const [a,b]=G.open,ok=G.last,P=G.players[G.turn];
+  if(ok){
+    [a,b].forEach(c=>{c.gone=true;$('#c'+c.i).classList.add('gone')});
+    P.score++;P.got.push(a.w+' ↔ '+b.w);G.found.push([a.w,b.w]);G.left--;
+    if(!st.again)G.turn=(G.turn+1)%G.players.length;
+  }else{
+    [a,b].forEach(c=>{c.up=false;const el=$('#c'+c.i);el.classList.remove('up','miss')});
+    G.turn=(G.turn+1)%G.players.length;
+  }
+  G.open=[];
+  setTimeout(()=>{G.lock=false;renderTop();if(G.left===0)setTimeout(finish,500)},ok?350:450);
+  renderTop();
+}
+function finish(){
+  const ps=G.players.map(p=>p).sort((x,y)=>y.score-x.score),top=ps[0].score,wins=ps.filter(p=>p.score===top);
+  $('#winTitle').textContent=wins.length>1?`${wins.map(p=>p.name).join(', ')} 공동 우승!`:`${wins[0].name} 승리!`;
+  let rk=0,prev=-1;
+  $('#rank').innerHTML=ps.map((p,i)=>{if(p.score!==prev){rk=i+1;prev=p.score}return `<li class="${p.score===top?'win':''}"><span class="n">${rk}</span>${esc(p.name)}<span class="s">${p.score}쌍</span></li>`}).join('');
+  $('#review').innerHTML=G.found.map(f=>`<span class="en">${esc(f[0])} ↔ ${esc(f[1])}</span>`).join('');
+  show('end');
+}
+$('#start').onclick=()=>{try{window.speechSynthesis&&speechSynthesis.getVoices()}catch(e){}startGame()};
+$('#again').onclick=startGame;
+$('#home').onclick=()=>{G=null;renderSetup();show('setup')};
+$('#btnQuit').onclick=()=>$('#veilQ').classList.add('on');
+$('#qNo').onclick=()=>$('#veilQ').classList.remove('on');
+$('#qYes').onclick=()=>{$('#veilQ').classList.remove('on');$('#veil').classList.remove('on');G=null;renderSetup();show('setup')};
+renderSetup();
+}
+</script>
+</body>
+</html>
