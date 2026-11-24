@@ -149,7 +149,8 @@ kbd{font-family:'Fredoka';font-weight:600;font-size:.62em;padding:.12em .45em;bo
     </ol>
     <div class="row"><span>폭탄 시간</span><div class="seg" id="segTime"><button data-v="short">짧게</button><button data-v="normal">보통</button><button data-v="long">길게</button></div></div>
     <div class="row"><span>넘길 때 정답 잠깐 보여주기</span><button class="toggle" id="tgFlash" aria-label="정답 보여주기"></button></div>
-    <div class="row"><span>소리</span><button class="toggle" id="tgSound" aria-label="소리"></button></div>
+    <div class="row"><span>배경음악</span><button class="toggle" id="tgMusic" aria-label="배경음악"></button></div>
+    <div class="row"><span>효과음</span><button class="toggle" id="tgSound" aria-label="소리"></button></div>
     <div class="actions"><button class="btn ghost" id="btnWords">단어 · 정답 확인</button><button class="btn primary big" id="btnStart">게임 시작 ▶</button></div>
   </div>
 </section>
@@ -182,7 +183,7 @@ kbd{font-family:'Fredoka';font-weight:600;font-size:.62em;padding:.12em .45em;bo
   <div class="actions"><button class="btn ghost" id="btnReset">기본값으로</button><button class="btn primary" id="btnClose">완료</button></div>
 </div></div>
 
-<div id="topbtns"><button class="ib" id="btnSound" title="소리 (M)">🔊</button><button class="ib" id="btnFS" title="전체화면 (F)">⛶</button></div>
+<div id="topbtns"><button class="ib" id="btnMusic" title="배경음악">🎵</button><button class="ib" id="btnSound" title="소리 (M)">🔊</button><button class="ib" id="btnFS" title="전체화면 (F)">⛶</button></div>
 <div id="hints" class="hidden">SPACE · ▶ 다음 단어 &nbsp;·&nbsp; A 정답 &nbsp;·&nbsp; P 멈춤 &nbsp;·&nbsp; F 전체화면 &nbsp;·&nbsp; M 소리</div>
 <div id="toast" class="hidden"></div>
 <div id="err"></div>
@@ -217,8 +218,9 @@ const WORDS = [
 ];
 const RANGES = { short:[15,35], normal:[25,55], long:[40,80] };
 const KEY = 'micdrop.v1';
-let settings = { time:'normal', flash:true, sound:true, answers:{}, off:{} };
+let settings = { time:'normal', flash:true, sound:true, music:true, answers:{}, off:{} };
 try { const s = JSON.parse(localStorage.getItem(KEY)||'null'); if (s) settings = Object.assign(settings, s); } catch(e) {}
+if (settings.music === undefined) settings.music = true;
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch(e) {} }
 const ans = w => (settings.answers[w.id] || w.en);
 const imgSrc = w => `img/${w.id}.jpg`;
@@ -247,6 +249,7 @@ const sfx = (() => {
       const bp = ac.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value = 5200; bp.Q.value = 0.7;
       hissGain = ac.createGain(); hissGain.gain.value = 0;
       src.connect(bp).connect(hissGain).connect(master); src.start();
+      musicGain = ac.createGain(); musicGain.gain.value = 0; musicGain.connect(master);
     } catch(e) { ac = null; }
   }
   function tone(f, dur, type='sine', vol=0.2, when=0, to=null){
@@ -263,9 +266,63 @@ const sfx = (() => {
     const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
     s.connect(f).connect(g).connect(master); s.start(t, Math.random()); s.stop(t+dur+0.05);
   }
+  /* ---- background music: 4-bar loop (C-G-Am-F), tempo follows tension ---- */
+  let musicGain = null, mTimer = null, mNext = 0, mStep = 0, mOn = false, mBpm = 104, mInt = 0, mPlay = false;
+  const PROG = [[48,52,55],[43,47,50],[45,48,52],[41,45,48]];
+  const MEL = [
+    72,0,76,0,79,0,76,0, 81,0,79,0,76,0,74,0,
+    79,0,74,0,71,0,74,0, 79,0,81,0,79,0,0,0,
+    81,0,76,0,72,0,76,0, 81,0,84,0,81,0,79,0,
+    77,0,81,0,84,0,81,0, 79,0,77,0,76,0,74,0];
+  const hz = n => 440*Math.pow(2, (n-69)/12);
+  function mnote(f, t, dur, type, vol, slideTo){
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t+0.006); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.connect(g).connect(musicGain); o.start(t); o.stop(t+dur+0.03);
+  }
+  function mnoise(t, dur, vol, type, freq){
+    const s = ac.createBufferSource(); s.buffer = noiseBuf; const f = ac.createBiquadFilter(); f.type = type; f.frequency.value = freq;
+    const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    s.connect(f).connect(g).connect(musicGain); s.start(t, Math.random()); s.stop(t+dur+0.03);
+  }
+  function mPlayStep(st, t){
+    const bar = Math.floor(st/16) % 4, b = st % 16, ch = PROG[bar], spb = 60/mBpm/4;
+    // bass
+    if (b % 4 === 0) mnote(hz(ch[0]-12), t, spb*3.2, 'triangle', 0.34);
+    if (mPlay && b % 4 === 2) mnote(hz(ch[0]), t, spb*1.4, 'triangle', 0.16);
+    // chord stabs
+    if (b % 8 === 4 || (mPlay && b % 8 === 6)) ch.forEach(n => mnote(hz(n+12), t, spb*1.6, 'triangle', 0.05));
+    // melody
+    const m = MEL[st % 64]; if (m) mnote(hz(m + (mInt > 0.7 ? 12 : 0)), t, spb*1.8, 'square', 0.035);
+    if (m) mnote(hz(m), t, spb*2.2, 'sine', 0.05);
+    // drums
+    if (b % 8 === 0 || (mPlay && mInt > 0.45 && b % 8 === 3)) mnote(130, t, 0.22, 'sine', 0.5, 42);
+    if (mPlay && b % 8 === 4) mnoise(t, 0.14, 0.16, 'bandpass', 1900);
+    if (mPlay && mInt > 0.8 && b >= 12) mnoise(t, 0.08, 0.1, 'bandpass', 2400);
+    if (b % 2 === 0 || (mPlay && mInt > 0.5)) mnoise(t, 0.04, mPlay ? 0.05 : 0.03, 'highpass', 7000);
+  }
+  function mSchedule(){
+    if (!ac) return;
+    while (mNext < ac.currentTime + 0.12){ mPlayStep(mStep, mNext); mNext += 60/mBpm/4; mStep = (mStep + 1) % 64; }
+  }
+  function musicStart(){
+    if (!ac || mOn) return; mOn = true; clearInterval(mTimer);
+    musicGain.gain.cancelScheduledValues(ac.currentTime); musicGain.gain.setTargetAtTime(settings.music ? 0.55 : 0, ac.currentTime, 0.3);
+    mNext = ac.currentTime + 0.06; mStep = 0; mTimer = setInterval(mSchedule, 25);
+  }
+  function musicStop(fade){
+    if (!ac || !mOn) return; mOn = false;
+    const t = ac.currentTime; musicGain.gain.cancelScheduledValues(t); musicGain.gain.setTargetAtTime(0, t, fade ? 0.25 : 0.02);
+    const id = mTimer; setTimeout(() => { if (!mOn || mTimer !== id) clearInterval(id); }, fade ? 900 : 60);
+  }
+
   let tk = false;
   return {
     init,
+    musicStart, musicStop,
+    musicSet(play, e){ mPlay = play; mInt = e; mBpm = play ? 118 + e*58 : 104; },
+    musicOn(on){ if (musicGain && ac) musicGain.gain.setTargetAtTime(on && mOn ? 0.55 : 0, ac.currentTime, 0.1); },
     setMute(m){ if (master) master.gain.setTargetAtTime(m?0:0.9, ac.currentTime, 0.05); },
     hiss(v){ if (hissGain) hissGain.gain.setTargetAtTime(v, ac.currentTime, 0.08); },
     tick(e){ tk=!tk; tone(tk?1500:1150, 0.045, 'triangle', 0.10+e*0.16); noise(0.03, 0.05+e*0.08, 'highpass', 3000, 6000); },
@@ -593,12 +650,12 @@ function resetBomb(){
   MIC.drop = false; MIC.rot = 0.3; MIC.vr = 0;
 }
 
-function startGame(){ sfx.init(); round = 0; deck = []; startRound(); }
+function startGame(){ sfx.init(); sfx.musicStart(); round = 0; deck = []; startRound(); }
 function startRound(){
   cdTimers.forEach(clearTimeout); cdTimers = []; if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; } busy = false;
   round++; passes = 0; elapsed = 0; paused = false; show(ui.pause, false);
   const r = RANGES[settings.time] || RANGES.normal; duration = rand(r[0], r[1]); maxRange = r[1];
-  updHud(); resetBomb(); setScreen('countdown'); state = 'countdown';
+  updHud(); resetBomb(); setScreen('countdown'); state = 'countdown'; sfx.musicStart();
   const seq = ['3','2','1','GO!'];
   seq.forEach((t, i) => cdTimers.push(setTimeout(() => {
     ui.cd.innerHTML = `<div class="n ${t==='GO!'?'go':''}">${t}</div>${i===0?'<div class="sub">첫 번째 친구, 마이크 준비!</div>':''}`;
@@ -614,7 +671,7 @@ function startRound(){
 
 function explode(){
   state = 'boom'; hideAnswer(); if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; } swapId++; ui.card.classList.remove('out');
-  B.visible = false; sfx.hiss(0); sfx.boom(); shake = 0.75;
+  B.visible = false; sfx.hiss(0); sfx.musicStop(false); sfx.boom(); shake = 0.75;
   ui.flash.style.transition = 'none'; ui.flash.style.opacity = '1';
   requestAnimationFrame(() => requestAnimationFrame(() => { ui.flash.style.transition = 'opacity 1s ease-out'; ui.flash.style.opacity = '0'; }));
   explodeFx(B.x, B.y);
@@ -625,19 +682,19 @@ function explode(){
     state = 'result';
     $('resImg').src = imgSrc(current); $('resKo').textContent = current.ko; $('resEn').textContent = ans(current);
     $('resStats').textContent = `이번 라운드 · 마이크 패스 ${passes}번 · 폭탄이 버틴 시간 ${Math.round(duration)}초`;
-    setScreen('result'); sfx.wahwah();
+    setScreen('result'); sfx.wahwah(); setTimeout(() => { if (state === 'result') sfx.musicStart(); }, 1900);
   }, 1500);
 }
 
 function toTitle(){
   cdTimers.forEach(clearTimeout); cdTimers = []; ui.cd.innerHTML = '';
   if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; }
-  state = 'title'; paused = false; show(ui.pause, false); sfx.hiss(0); resetBomb(); setScreen('title');
+  state = 'title'; paused = false; show(ui.pause, false); sfx.hiss(0); resetBomb(); setScreen('title'); sfx.musicStart();
 }
 function togglePause(){
   if (state !== 'play') return;
   if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; showWord(drawWord()); }
-  paused = !paused; show(ui.pause, paused); if (paused) sfx.hiss(0);
+  paused = !paused; show(ui.pause, paused); if (paused){ sfx.hiss(0); sfx.musicStop(true); } else sfx.musicStart();
 }
 
 /* ================= main loop ================= */
@@ -711,6 +768,7 @@ function frame(now){
   }
 
   // sound
+  sfx.musicSet(state === 'play', e);
   if (playing){
     sfx.hiss(0.025 + e*0.07);
     tickT -= dt; if (tickT <= 0){ sfx.tick(e); tickT = lerp(0.95, 0.11, e); }
@@ -759,6 +817,8 @@ function syncSettingsUI(){
   document.querySelectorAll('#segTime button').forEach(b => b.classList.toggle('on', b.dataset.v === settings.time));
   $('tgFlash').classList.toggle('on', !!settings.flash);
   $('tgSound').classList.toggle('on', !!settings.sound);
+  $('tgMusic').classList.toggle('on', !!settings.music);
+  $('btnMusic').style.opacity = settings.music ? '1' : '.45';
   $('btnSound').textContent = settings.sound ? '🔊' : '🔇';
 }
 function toggleSound(){ settings.sound = !settings.sound; save(); syncSettingsUI(); sfx.init(); sfx.setMute(!settings.sound); toast(settings.sound ? '소리 켬' : '소리 끔'); }
@@ -771,6 +831,11 @@ function toggleFS(){
 document.querySelectorAll('#segTime button').forEach(b => b.addEventListener('click', () => { settings.time = b.dataset.v; save(); syncSettingsUI(); }));
 $('tgFlash').addEventListener('click', () => { settings.flash = !settings.flash; save(); syncSettingsUI(); });
 $('tgSound').addEventListener('click', toggleSound);
+function toggleMusic(){ settings.music = !settings.music; save(); syncSettingsUI(); sfx.init(); sfx.musicStart(); sfx.musicOn(settings.music); toast(settings.music ? '배경음악 켬' : '배경음악 끔'); }
+$('tgMusic').addEventListener('click', toggleMusic);
+$('btnMusic').addEventListener('click', toggleMusic);
+function firstGesture(){ sfx.init(); if (state !== 'boom' && !paused) sfx.musicStart(); removeEventListener('pointerdown', firstGesture); removeEventListener('keydown', firstGesture); }
+addEventListener('pointerdown', firstGesture); addEventListener('keydown', firstGesture);
 $('btnSound').addEventListener('click', toggleSound);
 $('btnFS').addEventListener('click', toggleFS);
 $('btnStart').addEventListener('click', startGame);
