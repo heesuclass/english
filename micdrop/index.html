@@ -190,6 +190,10 @@ body.spelling .spellchip b{color:#fff;font-size:1.5vw}
 .dex em.g{color:#16b97c}.dex em.o{color:#ff7a1a}.dex em.p{color:#8a5cf0}
 #tutor .actions{margin-top:1.3vw}
 .btn.mint{color:#fff;background:linear-gradient(180deg,#5ef0b0,#16b97c);box-shadow:0 .45vw 0 #0f9663,0 1vw 2vw rgba(22,185,124,.3)}
+.est{font-size:.8em;color:#16b97c}
+.boom.fin{font-size:7vw;background-image:linear-gradient(180deg,#7ff0c0 0%,#2fcf8f 50%,#4d8dff 100%);filter:drop-shadow(0 .45vw 0 #fff) drop-shadow(0 1vw 1.4vw rgba(40,120,200,.35))}
+#finish:not(.hidden) .boom{animation:boompop .7s cubic-bezier(.2,1.7,.4,1) both}
+.stats.big{font-size:2.2vw;color:#33468a;margin:1vw 0}
 #err{position:fixed;inset:0;display:none;place-items:center;text-align:center;font-size:20px;padding:40px;background:#e6f4ff;z-index:20}
 </style>
 </head>
@@ -216,6 +220,7 @@ body.spelling .spellchip b{color:#fff;font-size:1.5vw}
     </ol>
     <div class="row"><span>게임 모드</span><div class="seg" id="segMode"><button data-v="game">실전</button><button data-v="word">단어 연습</button><button data-v="part">빈칸 연습</button></div></div>
     <div class="modedesc" id="modeDesc"></div>
+    <div class="row"><span>라운드 수 <small class="est" id="roundEst"></small></span><div class="seg" id="segRounds"><button data-v="3">3</button><button data-v="4">4</button><button data-v="5">5</button><button data-v="6">6</button><button data-v="8">8</button><button data-v="10">10</button><button data-v="0">∞</button></div></div>
     <div class="row"><span>폭탄 시간</span><div class="seg" id="segTime"><button data-v="short">짧게</button><button data-v="normal">보통</button><button data-v="long">길게</button></div></div>
     <div class="row"><span>넘길 때 정답 잠깐 보여주기</span><button class="toggle" id="tgFlash" aria-label="정답 보여주기"></button></div>
     <div class="row"><span>배경음악</span><button class="toggle" id="tgMusic" aria-label="배경음악"></button></div>
@@ -231,6 +236,8 @@ body.spelling .spellchip b{color:#fff;font-size:1.5vw}
   </div></div>
 
 <section id="tutor" class="right hidden"><div class="glass tutcard"><div class="tutorBody anim" id="tutorBody"></div></div></section>
+
+<section id="finish" class="right hidden"><div class="glass resultcard"><div class="boom fin">GAME END!</div><div class="outmsg">모두 정말 잘했어요! <b>🎉</b></div><div class="stats big" id="finStats"></div><div class="actions"><button class="btn ghost" id="btnFinHome">처음 화면</button><button class="btn primary big" id="btnFinAgain">다시 하기 ▶ <kbd>ENTER</kbd></button></div></div></section>
 
 <section id="result" class="right hidden">
   <div class="glass resultcard">
@@ -307,10 +314,11 @@ function setHint(w){
   else { mask = new Set(); el.innerHTML = ''; el.style.display = 'none'; }
 }
 const KEY = 'micdrop.v1';
-let settings = { time:'normal', mode:'game', flash:true, sound:true, music:true, answers:{}, off:{} };
+let settings = { time:'normal', mode:'game', rounds:6, flash:true, sound:true, music:true, answers:{}, off:{} };
 try { const s = JSON.parse(localStorage.getItem(KEY)||'null'); if (s) settings = Object.assign(settings, s); } catch(e) {}
 if (settings.music === undefined) settings.music = true;
 if (settings.mode === 'full') settings.mode = 'part';
+if (settings.rounds === undefined) settings.rounds = 6;
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch(e) {} }
 const ans = w => (settings.answers[w.id] || w.en);
 const imgSrc = w => `img/${w.id}.jpg`;
@@ -423,6 +431,7 @@ const sfx = (() => {
     ignite(){ tone(523, 0.12, 'triangle', 0.2); tone(784, 0.2, 'triangle', 0.18, 0.08); },
     zap(){ tone(180, 0.28, 'sawtooth', 0.11, 0, 1100); noise(0.25, 0.22, 'bandpass', 2000, 6000); },
     boom(){ noise(2.4, 1.0, 'lowpass', 3000, 60); noise(0.4, 0.6, 'highpass', 800, 3000); tone(120, 1.3, 'sine', 0.9, 0, 28); tone(62, 1.8, 'triangle', 0.55, 0, 24); },
+    fanfare(){ [523,659,784,1046].forEach((f,i)=>tone(f,0.25,'triangle',0.22,i*0.13)); tone(1046,0.9,'triangle',0.2,0.55); tone(1318,0.9,'sine',0.12,0.55); },
     wahwah(){ [392,370,349].forEach((f,i)=>tone(f,0.32,'triangle',0.2,i*0.34)); tone(330,0.9,'triangle',0.2,1.02,300); },
     pop(){ tone(520, 0.12, 'sine', 0.2, 0, 900); },
   };
@@ -706,10 +715,10 @@ function drawWord(){
 const ui = { title:$('title'), game:$('gameui'), stage:$('stage'), result:$('result'), hud:$('hud'), mini:$('minilogo'), hints:$('hints'), pause:$('pause'), cd:$('countdown'), card:$('cardImg'), cardImg:$('cardImg'), answer:$('answer'), vig:$('vignette'), flash:$('flash') };
 function show(el, on){ el.classList.toggle('hidden', !on); }
 function setScreen(s){
-  show(ui.title, s==='title'); show(ui.game, s==='play'); show(ui.stage, s==='play'); show(ui.result, s==='result'); show($('tutor'), s==='tutor');
+  show(ui.title, s==='title'); show(ui.game, s==='play'); show(ui.stage, s==='play'); show(ui.result, s==='result'); show($('tutor'), s==='tutor'); show($('finish'), s==='finish');
   const g = s!=='title' && s!=='tutor'; show(ui.hud, g); show(ui.mini, g); show(ui.hints, s==='play');
 }
-function updHud(){ $('hRoundLbl').textContent = tutorial ? '연습' : 'ROUND'; $('hRound').textContent = tutorial ? `${tutorStep}/2` : round; $('hPass').textContent = passes; }
+function updHud(){ $('hRoundLbl').textContent = tutorial ? '연습' : 'ROUND'; $('hRound').textContent = tutorial ? `${tutorStep}/2` : (settings.rounds ? `${round}/${settings.rounds}` : round); $('hPass').textContent = passes; }
 
 function showWord(w){
   current = w; hideAnswer(); busy = true; sfx.whoosh();
@@ -734,7 +743,7 @@ function nextWord(){
   if (state!=='play' || paused) return;
   if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; showWord(drawWord()); return; }
   if (busy) return;
-  passes++; updHud(); sfx.ding(); MIC.hop = 1;
+  passes++; totalPasses++; updHud(); sfx.ding(); MIC.hop = 1;
   if (settings.flash){ showAnswer(); flashTimer = setTimeout(() => { flashTimer = null; if (state==='play' && !paused) showWord(drawWord()); }, spelling ? 1100 : 600); }
   else showWord(drawWord());
 }
@@ -809,7 +818,16 @@ function tutorAction(a){
 }
 function nextTutor(){ tutorStep++; state = 'tutor'; setScreen('tutor'); renderTutor(); sfx.ding(); hop = 1; }
 
-function startGame(){ sfx.init(); sfx.musicStart(); tutorial = false; round = 0; deck = []; startRound(); }
+let totalPasses = 0;
+const isLastRound = () => !tutorial && settings.rounds && round >= settings.rounds;
+function startGame(){ sfx.init(); sfx.musicStart(); tutorial = false; round = 0; totalPasses = 0; deck = []; startRound(); }
+function finishGame(){
+  state = 'finish'; setScreen('finish'); sfx.fanfare();
+  $('finStats').textContent = `${round}라운드 완주 · 마이크 패스 총 ${totalPasses}번`;
+  for (let i=0;i<120;i++) fx.push({ k:'conf', x:rand(-50, 1970), y:rand(-400, -20), vx:rand(-80, 80), vy:rand(0, 200), rot:rand(0,TAU), vr:rand(-10,10), w:rand(14,24), h:rand(8,14), c:PASTEL.concat(['#ffffff'])[i%8], age:0, life:rand(4,6), flip:rand(0,TAU) });
+  MIC.hop = 1; hop = 1;
+}
+function afterResult(){ if (tutorial) nextTutor(); else if (isLastRound()) finishGame(); else startRound(); }
 function startRound(){
   cdTimers.forEach(clearTimeout); cdTimers = []; if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; } busy = false;
   round++; passes = 0; elapsed = 0; paused = false; show(ui.pause, false);
@@ -847,7 +865,7 @@ function explode(){
     $('resEn').classList.toggle('spell', spelling);
     $('resStats').textContent = `이번 라운드 · 마이크 패스 ${passes}번 · 폭탄이 버틴 시간 ${Math.round(duration)}초`;
     $('outMsg').innerHTML = tutorial ? '연습이니까 괜찮아요! <b>잘했어요 😊</b>' : '마이크를 들고 있던 친구 <b>탈락!</b>';
-    $('btnNext').innerHTML = tutorial ? (tutorStep < 2 ? '다음 단계 ▶ <kbd>ENTER</kbd>' : '연습 마무리 ▶ <kbd>ENTER</kbd>') : '다음 라운드 ▶ <kbd>ENTER</kbd>';
+    $('btnNext').innerHTML = tutorial ? (tutorStep < 2 ? '다음 단계 ▶ <kbd>ENTER</kbd>' : '연습 마무리 ▶ <kbd>ENTER</kbd>') : isLastRound() ? '최종 결과 🎉 <kbd>ENTER</kbd>' : '다음 라운드 ▶ <kbd>ENTER</kbd>';
     show($('btnAgain'), tutorial); $('btnAgain').style.display = tutorial ? '' : 'none';
     setScreen('result'); sfx.wahwah(); setTimeout(() => { if (state === 'result') sfx.musicStart(); }, 1900);
   }, 1500);
@@ -984,6 +1002,8 @@ function syncSettingsUI(){
   document.querySelectorAll('#segTime button').forEach(b => b.classList.toggle('on', b.dataset.v === settings.time));
   document.querySelectorAll('#segMode button').forEach(b => b.classList.toggle('on', b.dataset.v === (settings.mode || 'game')));
   $('modeDesc').textContent = MODE_DESC[settings.mode || 'game'];
+  document.querySelectorAll('#segRounds button').forEach(b => b.classList.toggle('on', +b.dataset.v === (settings.rounds||0)));
+  $('roundEst').textContent = estimate();
   $('tgFlash').classList.toggle('on', !!settings.flash);
   $('tgSound').classList.toggle('on', !!settings.sound);
   $('tgMusic').classList.toggle('on', !!settings.music);
@@ -998,6 +1018,13 @@ function toggleFS(){
   } catch(e) { toast('브라우저의 F11 키로 전체화면을 켜 주세요'); }
 }
 document.querySelectorAll('#segTime button').forEach(b => b.addEventListener('click', () => { settings.time = b.dataset.v; save(); syncSettingsUI(); }));
+document.querySelectorAll('#segRounds button').forEach(b => b.addEventListener('click', () => { settings.rounds = +b.dataset.v; save(); syncSettingsUI(); }));
+function estimate(){
+  const n = settings.rounds; if (!n) return '(끝없이)';
+  const r = RANGES[settings.time] || RANGES.normal, a = (r[0]+r[1])/2; let sec = 0;
+  for (let i=1;i<=n;i++){ const lv = levelOf(i); sec += a*(lv === 'part' ? 2.5 : 1) + 20; }
+  return `(약 ${Math.round(sec/60)}분)`;
+}
 document.querySelectorAll('#segMode button').forEach(b => b.addEventListener('click', () => { settings.mode = b.dataset.v; save(); syncSettingsUI(); }));
 const MODE_DESC = { game:'1~3라운드 영어로 말하기 → 4라운드부터 빈칸 채워서 전체 철자 말하기', word:'계속 우리말을 보고 영어 단어로 말해요', part:'빈칸을 채워서 전체 철자를 말해요 (폭탄 시간 2.5배)', full:'힌트 없이 철자를 처음부터 끝까지 말해요 (폭탄 시간 2.5배)' };
 $('tgFlash').addEventListener('click', () => { settings.flash = !settings.flash; save(); syncSettingsUI(); });
@@ -1015,7 +1042,9 @@ $('btnAns').addEventListener('click', toggleAnswer);
 $('btnPause').addEventListener('click', togglePause);
 $('btnResume').addEventListener('click', togglePause);
 $('btnQuit').addEventListener('click', toTitle);
-$('btnNext').addEventListener('click', () => tutorial ? nextTutor() : startRound());
+$('btnNext').addEventListener('click', afterResult);
+$('btnFinAgain').addEventListener('click', startGame);
+$('btnFinHome').addEventListener('click', toTitle);
 $('btnAgain').addEventListener('click', () => { round = tutorStep - 1; startRound(); });
 $('btnTutor').addEventListener('click', () => openTutor(0));
 $('btnHome').addEventListener('click', toTitle);
@@ -1052,7 +1081,8 @@ addEventListener('keydown', ev => {
     else if (c==='KeyA' || k==='PageUp' || k==='ArrowUp' || k==='ArrowLeft') toggleAnswer();
     else if (c==='KeyP' || k==='Escape') togglePause();
   }
-  else if (state === 'result'){ if (NEXT) (tutorial ? nextTutor() : startRound()); else if (k==='Escape') toTitle(); }
+  else if (state === 'result'){ if (NEXT) afterResult(); else if (k==='Escape') toTitle(); }
+  else if (state === 'finish'){ if (k==='Enter') startGame(); else if (k==='Escape') toTitle(); }
   else if (state === 'tutor'){ if (k==='Enter' || k===' ' || k==='ArrowRight' || k==='PageDown') tutorAction('go'); else if ((k==='ArrowLeft' || k==='PageUp') && tutorStep > 0 && tutorStep <= 2) tutorAction('prev'); else if (k==='Escape') tutorAction('home'); }
 });
 
