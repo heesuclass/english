@@ -186,6 +186,7 @@ body.spelling .spellchip b{color:#fff;font-size:1.5vw}
 @keyframes dletter{0%{opacity:0;transform:translateY(.8vw) scale(.5)}10%,75%{opacity:1;transform:none}90%,100%{opacity:0}}
 .dex{text-align:center;font-size:1.8vw;color:#33468a;margin-top:1vw}
 .dex em{font-style:normal;font-family:'Fredoka','Jua';font-weight:700}
+.dex em u{text-decoration:none;background:#ffe2c4;border-radius:.3vw;padding:0 .2vw}
 .dex em.g{color:#16b97c}.dex em.o{color:#ff7a1a}.dex em.p{color:#8a5cf0}
 #tutor .actions{margin-top:1.3vw}
 .btn.mint{color:#fff;background:linear-gradient(180deg,#5ef0b0,#16b97c);box-shadow:0 .45vw 0 #0f9663,0 1vw 2vw rgba(22,185,124,.3)}
@@ -193,7 +194,7 @@ body.spelling .spellchip b{color:#fff;font-size:1.5vw}
 </style>
 </head>
 <body>
-<div id="stage" class="hidden"><img id="cardImg" alt=""><div id="modeTag"><span class="say">🗣 영어로 말해요!</span><span class="prt">🧩 빈칸 철자를 말해요!</span><span class="spl">🔤 스펠링 전체를 말해요!</span></div><div id="hint" style="display:none"></div><div id="answer"></div></div>
+<div id="stage" class="hidden"><img id="cardImg" alt=""><div id="modeTag"><span class="say">🗣 영어로 말해요!</span><span class="prt">🧩 빈칸 채워서 전체 철자를 말해요!</span><span class="spl">🔤 스펠링 전체를 말해요!</span></div><div id="hint" style="display:none"></div><div id="answer"></div></div>
 <canvas id="c"></canvas>
 <div id="vignette"></div>
 
@@ -750,13 +751,13 @@ const DEMO = {
   1: () => `<div class="demo"><img src="img/w07.jpg" alt=""><div class="dpill">interesting</div></div>
        <div class="dex">예) <b>흥미로운</b> → <em class="g">interesting!</em></div>`,
   2: () => `<div class="demo"><img src="img/w11.jpg" alt=""><div class="dhint"><b>S</b><b>A</b><b class="bl"><span>F</span></b><b>E</b></div></div>
-       <div class="dex">예) <b>S A _ E</b> → 빈칸 글자 <em class="o">"F"</em> 만 말하면 돼요!</div>`,
+       <div class="dex">예) <b>S A _ E</b> → 빈칸을 채워서 <em class="o">S - A - <u>F</u> - E !</em></div>`,
   3: () => `<div class="demo"><img src="img/w18.jpg" alt=""><div class="dspell">${'QUIET'.split('').map((c,i)=>`<b style="animation-delay:${(i*0.35).toFixed(2)}s">${c}</b>`).join('')}</div></div>
        <div class="dex">예) <b>조용한</b> → <em class="p">Q - U - I - E - T !</em></div>`,
 };
 const TUT_TEXT = {
   1: ['1단계', '단어 영어로 말하기!', '화면에 우리말이 나오면, <b>영어 단어</b>로 크게 말해요.'],
-  2: ['2단계', '빈칸에 들어갈 철자 말하기!', '영어 단어에 빈칸이 있어요. <b>빈칸에 들어갈 글자만</b> 말해요.'],
+  2: ['2단계', '빈칸 채워서 전체 철자 말하기!', '영어 단어에 빈칸이 있어요. 빈칸 글자를 채워서 <b>처음부터 끝까지 철자를</b> 말해요.'],
   3: ['3단계', '전체 철자 말하기!', '단어의 철자를 <b>처음부터 끝까지 한 글자씩</b> 말해요.'],
 };
 function renderTutor(){
@@ -766,7 +767,7 @@ function renderTutor(){
       <p class="tlead">MIC DROP은 <b>세 가지 방법</b>으로 해요.<br>하나씩 천천히 연습해 봐요!</p>
       <ol class="tsteps">
         <li class="s1"><b>1</b>단어 영어로 말하기!</li>
-        <li class="s2"><b>2</b>빈칸에 들어갈 철자 말하기!</li>
+        <li class="s2"><b>2</b>빈칸 채워서 전체 철자 말하기!</li>
         <li class="s3"><b>3</b>전체 철자 말하기!</li>
       </ol>
       <p class="ttip">🎤 말하고 나면 마이크를 옆 친구에게 넘겨요. 폭탄이 터질 때 마이크를 들고 있으면 탈락! <small>(연습이니까 괜찮아요 😊)</small></p>
@@ -781,7 +782,7 @@ function renderTutor(){
   } else {
     h = `<div class="thello">연습 끝! 참 잘했어요 <span class="wave">🎉</span></div>
       <p class="tlead">세 가지 방법을 모두 연습했어요.<br>이제 <b>진짜 게임</b>을 해볼까요?</p>
-      <ol class="tsteps done"><li class="s1"><b>✓</b>단어 영어로 말하기</li><li class="s2"><b>✓</b>빈칸에 들어갈 철자 말하기</li><li class="s3"><b>✓</b>전체 철자 말하기</li></ol>
+      <ol class="tsteps done"><li class="s1"><b>✓</b>단어 영어로 말하기</li><li class="s2"><b>✓</b>빈칸 채워서 전체 철자 말하기</li><li class="s3"><b>✓</b>전체 철자 말하기</li></ol>
       <div class="actions"><button class="btn ghost" data-t="home">처음 화면</button><button class="btn ghost" data-t="again">연습 다시하기</button><button class="btn primary big" data-t="go">실전 게임 시작 ▶ <kbd>ENTER</kbd></button></div>`;
   }
   el.innerHTML = h;
@@ -820,7 +821,7 @@ function startRound(){
   updHud(); resetBomb(); setScreen('countdown'); state = 'countdown'; sfx.musicStart();
   const seq = ['3','2','1','GO!'];
   seq.forEach((t, i) => cdTimers.push(setTimeout(() => {
-    ui.cd.innerHTML = `<div class="n ${t==='GO!'?'go':''}">${t}</div>${i===0?(level==='full'?'<div class="sub spell">🔤 전체 스펠링 라운드! 철자를 처음부터 끝까지 <small>(폭탄 시간 2배)</small></div>':level==='part'?'<div class="sub spell">🧩 빈칸 스펠링 라운드! 빈칸에 들어갈 철자를 말해요 <small>(폭탄 시간 2배)</small></div>':'<div class="sub">첫 번째 친구, 마이크 준비!</div>'):''}`;
+    ui.cd.innerHTML = `<div class="n ${t==='GO!'?'go':''}">${t}</div>${i===0?(level==='full'?'<div class="sub spell">🔤 전체 스펠링 라운드! 철자를 처음부터 끝까지 <small>(폭탄 시간 2배)</small></div>':level==='part'?'<div class="sub spell">🧩 빈칸 스펠링 라운드! 빈칸을 채워서 전체 철자를 말해요 <small>(폭탄 시간 2배)</small></div>':'<div class="sub">첫 번째 친구, 마이크 준비!</div>'):''}`;
     sfx.beep(t==='GO!');
   }, 300 + i*800)));
   cdTimers.push(setTimeout(() => {
@@ -998,7 +999,7 @@ function toggleFS(){
 }
 document.querySelectorAll('#segTime button').forEach(b => b.addEventListener('click', () => { settings.time = b.dataset.v; save(); syncSettingsUI(); }));
 document.querySelectorAll('#segMode button').forEach(b => b.addEventListener('click', () => { settings.mode = b.dataset.v; save(); syncSettingsUI(); }));
-const MODE_DESC = { game:'1~3라운드 영어로 말하기 → 4·5라운드 빈칸 철자 → 6라운드부터 전체 스펠링', word:'계속 우리말을 보고 영어 단어로 말해요', part:'빈칸에 들어갈 철자만 말해요 (폭탄 시간 2배)', full:'단어 철자를 처음부터 끝까지 말해요 (폭탄 시간 2배)' };
+const MODE_DESC = { game:'1~3라운드 영어로 말하기 → 4·5라운드 빈칸 채워 전체 철자 → 6라운드부터 힌트 없이 전체 철자', word:'계속 우리말을 보고 영어 단어로 말해요', part:'빈칸을 채워서 전체 철자를 말해요 (폭탄 시간 2배)', full:'힌트 없이 철자를 처음부터 끝까지 말해요 (폭탄 시간 2배)' };
 $('tgFlash').addEventListener('click', () => { settings.flash = !settings.flash; save(); syncSettingsUI(); });
 $('tgSound').addEventListener('click', toggleSound);
 function toggleMusic(){ settings.music = !settings.music; save(); syncSettingsUI(); sfx.init(); sfx.musicStart(); sfx.musicOn(settings.music); toast(settings.music ? '배경음악 켬' : '배경음악 끔'); }
