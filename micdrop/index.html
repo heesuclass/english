@@ -214,7 +214,7 @@ body.spelling .spellchip b{color:#fff;font-size:1.5vw}
       <li><b>2</b>맞히면 선생님이 다음 단어로 넘기고, 마이크는 옆 친구에게!</li>
       <li><b>3</b>내가 마이크를 들고 있을 때 폭탄이 터지면 탈락!</li>
     </ol>
-    <div class="row"><span>게임 모드</span><div class="seg" id="segMode"><button data-v="game">실전</button><button data-v="word">단어 연습</button><button data-v="part">빈칸 연습</button><button data-v="full">스펠링 연습</button></div></div>
+    <div class="row"><span>게임 모드</span><div class="seg" id="segMode"><button data-v="game">실전</button><button data-v="word">단어 연습</button><button data-v="part">빈칸 연습</button></div></div>
     <div class="modedesc" id="modeDesc"></div>
     <div class="row"><span>폭탄 시간</span><div class="seg" id="segTime"><button data-v="short">짧게</button><button data-v="normal">보통</button><button data-v="long">길게</button></div></div>
     <div class="row"><span>넘길 때 정답 잠깐 보여주기</span><button class="toggle" id="tgFlash" aria-label="정답 보여주기"></button></div>
@@ -291,7 +291,7 @@ const RANGES = { short:[15,35], normal:[25,55], long:[40,80] };
 // rounds 1-3: say the word | 4-5: say the missing letters | 6+: spell the whole word. From round 4 the bomb time is x2.
 const PART_FROM = 4, FULL_FROM = 6;
 let level = 'word', spelling = false, mask = new Set();
-const levelOf = r => settings.mode && settings.mode !== 'game' ? settings.mode : (r >= FULL_FROM ? 'full' : r >= PART_FROM ? 'part' : 'word');
+const levelOf = r => settings.mode === 'word' || settings.mode === 'part' ? settings.mode : (r >= PART_FROM ? 'part' : 'word');
 const spellOut = t => t.toUpperCase().split(' ').map(w => w.split('').join(' ')).join('   ');
 function makeMask(t){
   const idx = []; for (let i=1;i<t.length;i++) if (/[a-z]/i.test(t[i])) idx.push(i);
@@ -310,6 +310,7 @@ const KEY = 'micdrop.v1';
 let settings = { time:'normal', mode:'game', flash:true, sound:true, music:true, answers:{}, off:{} };
 try { const s = JSON.parse(localStorage.getItem(KEY)||'null'); if (s) settings = Object.assign(settings, s); } catch(e) {}
 if (settings.music === undefined) settings.music = true;
+if (settings.mode === 'full') settings.mode = 'part';
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch(e) {} }
 const ans = w => (settings.answers[w.id] || w.en);
 const imgSrc = w => `img/${w.id}.jpg`;
@@ -708,7 +709,7 @@ function setScreen(s){
   show(ui.title, s==='title'); show(ui.game, s==='play'); show(ui.stage, s==='play'); show(ui.result, s==='result'); show($('tutor'), s==='tutor');
   const g = s!=='title' && s!=='tutor'; show(ui.hud, g); show(ui.mini, g); show(ui.hints, s==='play');
 }
-function updHud(){ $('hRoundLbl').textContent = tutorial ? '연습' : 'ROUND'; $('hRound').textContent = tutorial ? `${tutorStep}/3` : round; $('hPass').textContent = passes; }
+function updHud(){ $('hRoundLbl').textContent = tutorial ? '연습' : 'ROUND'; $('hRound').textContent = tutorial ? `${tutorStep}/2` : round; $('hPass').textContent = passes; }
 
 function showWord(w){
   current = w; hideAnswer(); busy = true; sfx.whoosh();
@@ -746,7 +747,7 @@ function resetBomb(){
 
 /* ================= guided practice (tutorial) ================= */
 let tutorial = false, tutorStep = 0;
-const TUT_LEVEL = ['word','part','full'];
+const TUT_LEVEL = ['word','part'];
 const DEMO = {
   1: () => `<div class="demo"><img src="img/w07.jpg" alt=""><div class="dpill">interesting</div></div>
        <div class="dex">예) <b>흥미로운</b> → <em class="g">interesting!</em></div>`,
@@ -764,25 +765,24 @@ function renderTutor(){
   const el = $('tutorBody'); let h = '';
   if (tutorStep === 0){
     h = `<div class="thello">연습게임 해볼까요~? <span class="wave">👋</span></div>
-      <p class="tlead">MIC DROP은 <b>세 가지 방법</b>으로 해요.<br>하나씩 천천히 연습해 봐요!</p>
+      <p class="tlead">MIC DROP은 <b>두 가지 방법</b>으로 해요.<br>하나씩 천천히 연습해 봐요!</p>
       <ol class="tsteps">
         <li class="s1"><b>1</b>단어 영어로 말하기!</li>
         <li class="s2"><b>2</b>빈칸 채워서 전체 철자 말하기!</li>
-        <li class="s3"><b>3</b>전체 철자 말하기!</li>
       </ol>
       <p class="ttip">🎤 말하고 나면 마이크를 옆 친구에게 넘겨요. 폭탄이 터질 때 마이크를 들고 있으면 탈락! <small>(연습이니까 괜찮아요 😊)</small></p>
       <div class="actions"><button class="btn ghost" data-t="home">처음 화면</button><button class="btn primary big" data-t="go">시작해요 ▶ <kbd>ENTER</kbd></button></div>`;
-  } else if (tutorStep <= 3){
+  } else if (tutorStep <= 2){
     const [badge, title, desc] = TUT_TEXT[tutorStep];
-    h = `<div class="tprog">${[1,2,3].map(i=>`<i class="${i<tutorStep?'done':i===tutorStep?'now':''}"></i>`).join('')}</div>
+    h = `<div class="tprog">${[1,2].map(i=>`<i class="${i<tutorStep?'done':i===tutorStep?'now':''}"></i>`).join('')}</div>
       <div class="thead s${tutorStep}"><span class="tbadge">${badge}</span>${title}</div>
       <p class="tdesc">${desc}</p>
       ${DEMO[tutorStep]()}
       <div class="actions"><button class="btn ghost" data-t="prev">◀ 이전</button><button class="btn ghost" data-t="skip">건너뛰기</button><button class="btn primary big" data-t="go">연습해 보기 ▶ <kbd>ENTER</kbd></button></div>`;
   } else {
     h = `<div class="thello">연습 끝! 참 잘했어요 <span class="wave">🎉</span></div>
-      <p class="tlead">세 가지 방법을 모두 연습했어요.<br>이제 <b>진짜 게임</b>을 해볼까요?</p>
-      <ol class="tsteps done"><li class="s1"><b>✓</b>단어 영어로 말하기</li><li class="s2"><b>✓</b>빈칸 채워서 전체 철자 말하기</li><li class="s3"><b>✓</b>전체 철자 말하기</li></ol>
+      <p class="tlead">두 가지 방법을 모두 연습했어요.<br>이제 <b>진짜 게임</b>을 해볼까요?</p>
+      <ol class="tsteps done"><li class="s1"><b>✓</b>단어 영어로 말하기</li><li class="s2"><b>✓</b>빈칸 채워서 전체 철자 말하기</li></ol>
       <div class="actions"><button class="btn ghost" data-t="home">처음 화면</button><button class="btn ghost" data-t="again">연습 다시하기</button><button class="btn primary big" data-t="go">실전 게임 시작 ▶ <kbd>ENTER</kbd></button></div>`;
   }
   el.innerHTML = h;
@@ -803,7 +803,7 @@ function tutorAction(a){
   if (a === 'again') { openTutor(1); return; }
   if (a === 'go'){
     if (tutorStep === 0){ tutorStep = 1; sfx.ding(); hop = 1; renderTutor(); }
-    else if (tutorStep <= 3){ round = tutorStep - 1; startRound(); }
+    else if (tutorStep <= 2){ round = tutorStep - 1; startRound(); }
     else { tutorial = false; settings.mode = 'game'; save(); syncSettingsUI(); startGame(); }
   }
 }
@@ -813,7 +813,7 @@ function startGame(){ sfx.init(); sfx.musicStart(); tutorial = false; round = 0;
 function startRound(){
   cdTimers.forEach(clearTimeout); cdTimers = []; if (flashTimer){ clearTimeout(flashTimer); flashTimer = null; } busy = false;
   round++; passes = 0; elapsed = 0; paused = false; show(ui.pause, false);
-  level = tutorial ? TUT_LEVEL[tutorStep-1] : levelOf(round); spelling = level !== 'word'; const mul = spelling ? 2 : 1;
+  level = tutorial ? TUT_LEVEL[tutorStep-1] : levelOf(round); spelling = level !== 'word'; const mul = spelling ? 2.5 : 1;
   document.body.dataset.level = level;
   const chip = document.querySelector('.spellchip b'); if (chip) chip.textContent = level === 'full' ? '🔤 전체 스펠링' : '🧩 빈칸 스펠링';
   const r = tutorial ? RANGES.short : (RANGES[settings.time] || RANGES.normal); duration = rand(r[0], r[1])*mul; maxRange = r[1]*mul;
@@ -821,7 +821,7 @@ function startRound(){
   updHud(); resetBomb(); setScreen('countdown'); state = 'countdown'; sfx.musicStart();
   const seq = ['3','2','1','GO!'];
   seq.forEach((t, i) => cdTimers.push(setTimeout(() => {
-    ui.cd.innerHTML = `<div class="n ${t==='GO!'?'go':''}">${t}</div>${i===0?(level==='full'?'<div class="sub spell">🔤 전체 스펠링 라운드! 철자를 처음부터 끝까지 <small>(폭탄 시간 2배)</small></div>':level==='part'?'<div class="sub spell">🧩 빈칸 스펠링 라운드! 빈칸을 채워서 전체 철자를 말해요 <small>(폭탄 시간 2배)</small></div>':'<div class="sub">첫 번째 친구, 마이크 준비!</div>'):''}`;
+    ui.cd.innerHTML = `<div class="n ${t==='GO!'?'go':''}">${t}</div>${i===0?(level==='full'?'<div class="sub spell">🔤 전체 스펠링 라운드! 철자를 처음부터 끝까지 <small>(폭탄 시간 2.5배)</small></div>':level==='part'?'<div class="sub spell">🧩 빈칸 스펠링 라운드! 빈칸을 채워서 전체 철자를 말해요 <small>(폭탄 시간 2.5배)</small></div>':'<div class="sub">첫 번째 친구, 마이크 준비!</div>'):''}`;
     sfx.beep(t==='GO!');
   }, 300 + i*800)));
   cdTimers.push(setTimeout(() => {
@@ -847,7 +847,7 @@ function explode(){
     $('resEn').classList.toggle('spell', spelling);
     $('resStats').textContent = `이번 라운드 · 마이크 패스 ${passes}번 · 폭탄이 버틴 시간 ${Math.round(duration)}초`;
     $('outMsg').innerHTML = tutorial ? '연습이니까 괜찮아요! <b>잘했어요 😊</b>' : '마이크를 들고 있던 친구 <b>탈락!</b>';
-    $('btnNext').innerHTML = tutorial ? (tutorStep < 3 ? '다음 단계 ▶ <kbd>ENTER</kbd>' : '연습 마무리 ▶ <kbd>ENTER</kbd>') : '다음 라운드 ▶ <kbd>ENTER</kbd>';
+    $('btnNext').innerHTML = tutorial ? (tutorStep < 2 ? '다음 단계 ▶ <kbd>ENTER</kbd>' : '연습 마무리 ▶ <kbd>ENTER</kbd>') : '다음 라운드 ▶ <kbd>ENTER</kbd>';
     show($('btnAgain'), tutorial); $('btnAgain').style.display = tutorial ? '' : 'none';
     setScreen('result'); sfx.wahwah(); setTimeout(() => { if (state === 'result') sfx.musicStart(); }, 1900);
   }, 1500);
@@ -999,7 +999,7 @@ function toggleFS(){
 }
 document.querySelectorAll('#segTime button').forEach(b => b.addEventListener('click', () => { settings.time = b.dataset.v; save(); syncSettingsUI(); }));
 document.querySelectorAll('#segMode button').forEach(b => b.addEventListener('click', () => { settings.mode = b.dataset.v; save(); syncSettingsUI(); }));
-const MODE_DESC = { game:'1~3라운드 영어로 말하기 → 4·5라운드 빈칸 채워 전체 철자 → 6라운드부터 힌트 없이 전체 철자', word:'계속 우리말을 보고 영어 단어로 말해요', part:'빈칸을 채워서 전체 철자를 말해요 (폭탄 시간 2배)', full:'힌트 없이 철자를 처음부터 끝까지 말해요 (폭탄 시간 2배)' };
+const MODE_DESC = { game:'1~3라운드 영어로 말하기 → 4라운드부터 빈칸 채워서 전체 철자 말하기', word:'계속 우리말을 보고 영어 단어로 말해요', part:'빈칸을 채워서 전체 철자를 말해요 (폭탄 시간 2.5배)', full:'힌트 없이 철자를 처음부터 끝까지 말해요 (폭탄 시간 2.5배)' };
 $('tgFlash').addEventListener('click', () => { settings.flash = !settings.flash; save(); syncSettingsUI(); });
 $('tgSound').addEventListener('click', toggleSound);
 function toggleMusic(){ settings.music = !settings.music; save(); syncSettingsUI(); sfx.init(); sfx.musicStart(); sfx.musicOn(settings.music); toast(settings.music ? '배경음악 켬' : '배경음악 끔'); }
@@ -1053,7 +1053,7 @@ addEventListener('keydown', ev => {
     else if (c==='KeyP' || k==='Escape') togglePause();
   }
   else if (state === 'result'){ if (NEXT) (tutorial ? nextTutor() : startRound()); else if (k==='Escape') toTitle(); }
-  else if (state === 'tutor'){ if (k==='Enter' || k===' ' || k==='ArrowRight' || k==='PageDown') tutorAction('go'); else if ((k==='ArrowLeft' || k==='PageUp') && tutorStep > 0 && tutorStep <= 3) tutorAction('prev'); else if (k==='Escape') tutorAction('home'); }
+  else if (state === 'tutor'){ if (k==='Enter' || k===' ' || k==='ArrowRight' || k==='PageDown') tutorAction('go'); else if ((k==='ArrowLeft' || k==='PageUp') && tutorStep > 0 && tutorStep <= 2) tutorAction('prev'); else if (k==='Escape') tutorAction('home'); }
 });
 
 syncSettingsUI();
