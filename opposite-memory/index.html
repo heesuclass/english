@@ -50,7 +50,9 @@ h1{font-size:clamp(34px,6vw,50px);line-height:1.05;margin:0 0 6px;text-wrap:bala
 .pl span{font-family:Fredoka;font-weight:700;font-size:26px}
 .pl.turn{background:var(--gold);color:var(--cink);border-color:#fff;transform:translateY(-1px)}
 .tools{display:flex;gap:8px}
-.tools button{background:rgba(255,255,255,.16);color:#fff;padding:0 14px}
+.tools button{background:rgba(255,255,255,.16);color:#fff;padding:0 14px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.tools button svg{width:22px;height:22px;flex:none}
+.tools .snd.off{opacity:.55}.tools .snd.off svg .x{display:inline}.tools .snd svg .x{display:none}
 .turnbar{text-align:center;padding:6px 10px 0;font-size:20px;min-height:36px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .turnbar em{font-style:normal;color:var(--gold)}
 #board{flex:1;position:relative;margin:8px 12px 12px}
@@ -124,7 +126,10 @@ h1{font-size:clamp(34px,6vw,50px);line-height:1.05;margin:0 0 6px;text-wrap:bala
 <section id="game" class="screen">
   <div class="top">
     <div class="players" id="players"></div>
-    <div class="tools"><button id="btnQuit" aria-label="처음으로">처음으로</button></div>
+    <div class="tools">
+      <button class="snd" id="btnMusic" aria-label="배경음악 켜기/끄기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="16" r="3" fill="currentColor"/><path class="x" d="M3 3l18 18" stroke-width="2.5"/></svg>음악</button>
+      <button class="snd" id="btnVoice" aria-label="단어 읽기 켜기/끄기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path class="x" d="M3 3l18 18" stroke-width="2.5"/></svg>읽기</button>
+      <button id="btnQuit" aria-label="처음으로">처음으로</button></div>
   </div>
   <div class="turnbar" id="turnbar"></div>
   <div id="board"><div id="grid"></div></div>
@@ -172,7 +177,7 @@ const PAIRS=[
 const BACK='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff"/><text x="50" y="66" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="46" fill="#e2483a">?</text></svg>';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let st={n:4,names:["친구 1","친구 2","친구 3","친구 4","친구 5","친구 6"],pairs:10,kor:true,again:true};
+let st={n:4,names:["친구 1","친구 2","친구 3","친구 4","친구 5","친구 6"],pairs:10,kor:true,again:true,music:true,voice:true};
 try{const s=JSON.parse(localStorage.getItem("opp-memory")||"null");if(s)st=Object.assign(st,s)}catch(e){}
 const save=()=>{try{localStorage.setItem("opp-memory",JSON.stringify(st))}catch(e){}};
 let G=null;
@@ -195,10 +200,83 @@ $('#togA').onclick=()=>{st.again=!st.again;save();renderSetup()};
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 
-function speak(t){
-  try{const sy=window.speechSynthesis;if(!sy)return;sy.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=.85;
-    const v=sy.getVoices().find(v=>/^en(-|_)US/i.test(v.lang))||sy.getVoices().find(v=>/^en/i.test(v.lang));if(v)u.voice=v;sy.speak(u)}catch(e){}
+/* ---------- 소리 ---------- */
+let VOICE=null;
+function pickVoice(){
+  try{const vs=speechSynthesis.getVoices().filter(v=>/^en[-_]/i.test(v.lang));
+    const pref=[/Google US English/i,/Samantha/i,/Jenny|Aria|Ana/i,/en[-_]US/i];
+    for(const r of pref){const v=vs.find(v=>r.test(v.name)||r.test(v.lang));if(v){VOICE=v;return}}
+    VOICE=vs[0]||null}catch(e){}
 }
+try{if(window.speechSynthesis){pickVoice();speechSynthesis.onvoiceschanged=pickVoice}}catch(e){}
+function speak(t){
+  if(!st.voice)return;
+  try{const sy=window.speechSynthesis;if(!sy)return;
+    sy.cancel();
+    const u=new SpeechSynthesisUtterance(t);u.lang='en-US';u.rate=.8;u.pitch=1.05;u.volume=1;
+    if(VOICE)u.voice=VOICE;
+    u.onstart=()=>duck(true);u.onend=u.onerror=()=>duck(false);
+    setTimeout(()=>{sy.resume&&sy.resume();sy.speak(u)},60);
+  }catch(e){}
+}
+let AC=null,MUS=null,SFX=null,musicOn=false,nextT=0,step=0,timer=null;
+function ac(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();
+    MUS=AC.createGain();MUS.gain.value=.0;MUS.connect(AC.destination);
+    SFX=AC.createGain();SFX.gain.value=.35;SFX.connect(AC.destination)}catch(e){AC=null}}
+  if(AC&&AC.state==='suspended')AC.resume();
+  return AC;
+}
+function tone(dest,f,t,d,type,vol){
+  const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.012);g.gain.exponentialRampToValueAtTime(.0005,t+d);
+  o.connect(g);g.connect(dest);o.start(t);o.stop(t+d+.05);
+}
+function hat(t){
+  const n=AC.sampleRate*.04,bf=AC.createBuffer(1,n,AC.sampleRate),d=bf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=AC.createBufferSource(),hp=AC.createBiquadFilter(),g=AC.createGain();hp.type='highpass';hp.frequency.value=7000;g.gain.value=.12;
+  s.buffer=bf;s.connect(hp);hp.connect(g);g.connect(MUS);s.start(t);
+}
+// 직접 만든 밝은 8마디 루프 (C – G – Am – F)
+const M=n=>440*2**((n-69)/12);
+const CH=[[48,55,60,64],[43,50,55,59],[45,52,57,60],[41,48,53,57]];
+const MEL=[72,0,76,79, 77,76,74,0, 74,0,71,74, 79,77,76,0, 72,0,76,72, 69,72,76,0, 77,76,74,72, 74,0,0,0,
+           76,0,79,84, 83,81,79,0, 79,0,74,79, 83,81,79,0, 81,79,76,72, 77,76,74,72, 71,72,74,76, 72,0,0,0];
+const BPM=116,SP=60/BPM/2;
+function sched(){
+  while(nextT<AC.currentTime+.15){
+    const bar=Math.floor(step/8)%4,ch=CH[bar],m=MEL[step%MEL.length];
+    if(step%8===0)tone(MUS,M(ch[0]-12),nextT,SP*3.5,'triangle',.32);
+    if(step%8===4)tone(MUS,M(ch[1]-12),nextT,SP*3,'triangle',.26);
+    if(step%2===0)tone(MUS,M(ch[1+(step/2)%3]),nextT,SP*.9,'sine',.07);
+    if(m)tone(MUS,M(m),nextT,SP*1.6,'square',.045);
+    if(step%2===1)hat(nextT);
+    nextT+=SP;step++;
+  }
+}
+let ducked=false;
+function setMusicGain(){if(!AC)return;const v=musicOn?(ducked?.18:.6):0;MUS.gain.cancelScheduledValues(AC.currentTime);MUS.gain.setTargetAtTime(v,AC.currentTime,.12)}
+function duck(on){ducked=on;setMusicGain()}
+function music(on){
+  if(!ac())return;
+  musicOn=on&&st.music;
+  if(musicOn&&!timer){nextT=AC.currentTime+.1;timer=setInterval(sched,40)}
+  if(!musicOn&&timer){setTimeout(()=>{if(!musicOn){clearInterval(timer);timer=null}},400)}
+  setMusicGain();
+}
+function sfx(kind){
+  if(!ac())return;const t=AC.currentTime+.01;
+  if(kind==='flip'){tone(SFX,M(84),t,.08,'triangle',.5);tone(SFX,M(91),t+.04,.08,'triangle',.35)}
+  if(kind==='hit'){[72,76,79,84].forEach((n,i)=>tone(SFX,M(n),t+i*.08,.3,'square',.22))}
+  if(kind==='miss'){tone(SFX,M(55),t,.18,'sawtooth',.18);tone(SFX,M(51),t+.17,.3,'sawtooth',.18)}
+  if(kind==='win'){[72,76,79,84,79,84,88].forEach((n,i)=>tone(SFX,M(n),t+i*.13,i==6?.8:.22,'square',.22))}
+}
+function syncSnd(){
+  $('#btnMusic').classList.toggle('off',!st.music);$('#btnVoice').classList.toggle('off',!st.voice);
+}
+$('#btnMusic').onclick=()=>{st.music=!st.music;save();syncSnd();music(true)};
+$('#btnVoice').onclick=()=>{st.voice=!st.voice;save();syncSnd();if(!st.voice)try{speechSynthesis.cancel()}catch(e){}};
 
 function startGame(){
   const used=shuffle(PAIRS.slice()).slice(0,st.pairs);
@@ -207,7 +285,7 @@ function startGame(){
   G={cards:shuffle(cards).map((c,i)=>Object.assign(c,{i,up:false,gone:false})),
      players:Array.from({length:st.n},(_,i)=>({name:(st.names[i]||'').trim()||`친구 ${i+1}`,score:0,got:[]})),
      turn:0,open:[],lock:false,left:st.pairs,found:[]};
-  show('game');buildGrid();renderTop();
+  show('game');buildGrid();renderTop();syncSnd();ac();music(true);
 }
 function renderPlayers(){
   $('#players').innerHTML=G.players.map((p,i)=>`<div class="pl ${i===G.turn?'turn':''}"><b>${esc(p.name)}</b><span>${p.score}</span></div>`).join('');
@@ -225,7 +303,7 @@ function layout(){
   if(!G)return;
   const b=$('#board'),W=b.clientWidth,H=b.clientHeight,N=G.cards.length,gap=10,ar=.78;
   let best={s:0,c:1};
-  for(let c=1;c<=N;c++){const r=Math.ceil(N/c);let w=(W-gap*(c-1))/c,h=(H-gap*(r-1))/r;if(w/h>ar)w=h*ar;else h=w/ar;if(w>best.s)best={s:w,c,h}}
+  for(let c=1;c<=N;c++){const r=Math.ceil(N/c);let w=(W-gap*(c-1))/c,h=(H-gap*(r-1))/r;if(w/h>ar)w=h*ar;else h=w/ar;const sc=w*(N%c?.9:1);if(sc>(best.sc||0))best={s:w,c,h,sc}}
   const g=$('#grid');
   g.style.gridTemplateColumns=`repeat(${best.c},${Math.floor(best.s)}px)`;
   g.style.gridAutoRows=Math.floor(best.h)+'px';
@@ -237,7 +315,7 @@ const ro=new ResizeObserver(layout);ro.observe($('#board'));
 $('#grid').onclick=e=>{
   const el=e.target.closest('.c');if(!el||!G||G.lock)return;
   const c=G.cards[+el.dataset.i];if(c.up||c.gone)return;
-  c.up=true;el.classList.add('up');G.open.push(c);speak(c.w);
+  c.up=true;el.classList.add('up');G.open.push(c);sfx('flip');speak(c.w);
   if(G.open.length===2){G.lock=true;setTimeout(resolve,700)}
 };
 $('#grid').addEventListener('click',e=>{
@@ -249,7 +327,8 @@ function resolve(){
   $('#turnbar').innerHTML=ok
     ?`<em>짝을 찾았어요!</em> <span class="en">${esc(a.w)} ↔ ${esc(b.w)}</span> — ${esc(P.name)} +1`
     :`짝이 아니에요 — 카드를 다시 뒤집어요`;
-  if(ok){P.score++;P.got.push(a.w+' ↔ '+b.w);G.found.push([a.w,b.w]);G.left--;renderPlayers()}
+  sfx(ok?'hit':'miss');
+  if(ok){setTimeout(()=>speak(a.w+'. '+b.w+'.'),450);P.score++;P.got.push(a.w+' ↔ '+b.w);G.found.push([a.w,b.w]);G.left--;renderPlayers()}
   setTimeout(()=>{
     if(G!==g0)return;
     if(ok){[a,b].forEach(c=>{c.gone=true;$('#c'+c.i).classList.add('gone')});if(!st.again)G.turn=(G.turn+1)%G.players.length}
@@ -264,14 +343,14 @@ function finish(){
   let rk=0,prev=-1;
   $('#rank').innerHTML=ps.map((p,i)=>{if(p.score!==prev){rk=i+1;prev=p.score}return `<li class="${p.score===top?'win':''}"><span class="n">${rk}</span>${esc(p.name)}<span class="s">${p.score}쌍</span></li>`}).join('');
   $('#review').innerHTML=G.found.map(f=>`<span class="en">${esc(f[0])} ↔ ${esc(f[1])}</span>`).join('');
-  show('end');
+  show('end');music(false);sfx('win');
 }
 $('#start').onclick=()=>{try{window.speechSynthesis&&speechSynthesis.getVoices()}catch(e){}startGame()};
 $('#again').onclick=startGame;
-$('#home').onclick=()=>{G=null;renderSetup();show('setup')};
+$('#home').onclick=()=>{music(false);G=null;renderSetup();show('setup')};
 $('#btnQuit').onclick=()=>$('#veilQ').classList.add('on');
 $('#qNo').onclick=()=>$('#veilQ').classList.remove('on');
-$('#qYes').onclick=()=>{$('#veilQ').classList.remove('on');G=null;renderSetup();show('setup')};
+$('#qYes').onclick=()=>{music(false);try{speechSynthesis.cancel()}catch(e){}$('#veilQ').classList.remove('on');G=null;renderSetup();show('setup')};
 renderSetup();
 }
 </script>
