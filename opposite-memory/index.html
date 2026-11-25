@@ -51,7 +51,7 @@ h1{font-size:clamp(34px,6vw,50px);line-height:1.05;margin:0 0 6px;text-wrap:bala
 .pl.turn{background:var(--gold);color:var(--cink);border-color:#fff;transform:translateY(-1px)}
 .tools{display:flex;gap:8px}
 .tools button{background:rgba(255,255,255,.16);color:#fff;padding:0 14px}
-.turnbar{text-align:center;padding:6px 10px 0;font-size:20px}
+.turnbar{text-align:center;padding:6px 10px 0;font-size:20px;min-height:36px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .turnbar em{font-style:normal;color:var(--gold)}
 #board{flex:1;position:relative;margin:8px 12px 12px}
 #grid{position:absolute;inset:0;display:grid;gap:10px;align-content:center;justify-content:center}
@@ -149,7 +149,6 @@ h1{font-size:clamp(34px,6vw,50px);line-height:1.05;margin:0 0 6px;text-wrap:bala
   </div>
 </section>
 
-<div class="veil" id="veil"><div class="dlg" id="dlg"></div></div>
 <div class="veil" id="veilQ"><div class="dlg">
   <h2>게임을 그만할까요?</h2><p>지금까지 점수는 사라져요.</p>
   <div class="btns"><button class="neutral" id="qNo">계속하기</button><button class="no" id="qYes">처음으로</button></div>
@@ -169,7 +168,7 @@ const PAIRS=[
  ["real","진짜의","fake","가짜의"],
  ["quiet","조용한","loud","시끄러운"]
 ];
-const SPK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>';
+//const SPK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor"/><path d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>';
 const BACK='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff"/><text x="50" y="66" text-anchor="middle" font-family="Fredoka" font-weight="700" font-size="46" fill="#e2483a">?</text></svg>';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -210,8 +209,11 @@ function startGame(){
      turn:0,open:[],lock:false,left:st.pairs,found:[]};
   show('game');buildGrid();renderTop();
 }
-function renderTop(){
+function renderPlayers(){
   $('#players').innerHTML=G.players.map((p,i)=>`<div class="pl ${i===G.turn?'turn':''}"><b>${esc(p.name)}</b><span>${p.score}</span></div>`).join('');
+}
+function renderTop(){
+  renderPlayers();
   $('#turnbar').innerHTML=`<em>${esc(G.players[G.turn].name)}</em> 차례 — 카드 두 장을 뒤집어요`;
 }
 function buildGrid(){
@@ -236,50 +238,25 @@ $('#grid').onclick=e=>{
   const el=e.target.closest('.c');if(!el||!G||G.lock)return;
   const c=G.cards[+el.dataset.i];if(c.up||c.gone)return;
   c.up=true;el.classList.add('up');G.open.push(c);speak(c.w);
-  if(G.open.length===2){G.lock=true;setTimeout(askRead,650)}
+  if(G.open.length===2){G.lock=true;setTimeout(resolve,700)}
 };
-
-function askRead(){
-  const [a,b]=G.open;
-  $('#dlg').innerHTML=`<h2>${esc(G.players[G.turn].name)}, 소리 내어 읽어 볼까요?</h2><p>단어를 누르면 소리를 들을 수 있어요</p>
-   <div class="pair"><button class="say" data-w="${esc(a.w)}"><span class="en">${esc(a.w)}</span>${st.kor?`<small>${esc(a.k)}</small>`:''}${SPK}</button>
-   <span class="vs">↔</span>
-   <button class="say" data-w="${esc(b.w)}"><span class="en">${esc(b.w)}</span>${st.kor?`<small>${esc(b.k)}</small>`:''}${SPK}</button></div>
-   <p>두 단어는 반대말일까요?</p>
-   <div class="btns"><button class="yes" data-g="1">반대말이에요!</button><button class="no" data-g="0">반대말이 아니에요</button></div>`;
-  $('#veil').classList.add('on');
-}
-$('#dlg').onclick=e=>{
-  const s=e.target.closest('.say');if(s){speak(s.dataset.w);return}
-  const g=e.target.closest('[data-g]');if(g){judge(g.dataset.g==='1');return}
-  if(e.target.closest('#next'))next();
-};
-function judge(guess){
-  const [a,b]=G.open,ok=a.id===b.id,right=guess===ok;
-  G.last=ok;
+$('#grid').addEventListener('click',e=>{
+  const el=e.target.closest('.c.up');if(el&&G&&G.lock)speak(G.cards[+el.dataset.i].w);
+});
+function resolve(){
+  const g0=G,[a,b]=G.open,ok=a.id===b.id,P=G.players[G.turn];
   [a,b].forEach(c=>$('#c'+c.i).classList.add(ok?'hit':'miss'));
-  let msg,cls,detail;
-  if(ok){msg='짝을 찾았어요!';cls='good';detail=`<span class="en">${esc(a.w)}</span> ↔ <span class="en">${esc(b.w)}</span> 카드를 가져가요.`+(st.again?' 한 번 더!':'');
-    if(!guess)detail='사실 반대말이었어요! '+detail}
-  else{msg=right?'맞아요, 짝이 아니에요':'아쉬워요, 짝이 아니에요';cls='bad';
-    const pa=G.cards.find(c=>c.id===a.id&&c!==a),pb=G.cards.find(c=>c.id===b.id&&c!==b);
-    detail=`카드를 다시 뒤집고 다음 친구 차례예요.`}
-  $('#dlg').innerHTML=`<div class="res ${cls}">${msg}</div><p>${detail}</p><div class="btns"><button class="neutral" id="next" style="background:${ok?'var(--ok)':'var(--gold)'};color:${ok?'#fff':'var(--cink)'}">확인</button></div>`;
-}
-function next(){
-  $('#veil').classList.remove('on');
-  const [a,b]=G.open,ok=G.last,P=G.players[G.turn];
-  if(ok){
-    [a,b].forEach(c=>{c.gone=true;$('#c'+c.i).classList.add('gone')});
-    P.score++;P.got.push(a.w+' ↔ '+b.w);G.found.push([a.w,b.w]);G.left--;
-    if(!st.again)G.turn=(G.turn+1)%G.players.length;
-  }else{
-    [a,b].forEach(c=>{c.up=false;const el=$('#c'+c.i);el.classList.remove('up','miss')});
-    G.turn=(G.turn+1)%G.players.length;
-  }
-  G.open=[];
-  setTimeout(()=>{G.lock=false;renderTop();if(G.left===0)setTimeout(finish,500)},ok?350:450);
-  renderTop();
+  $('#turnbar').innerHTML=ok
+    ?`<em>짝을 찾았어요!</em> <span class="en">${esc(a.w)} ↔ ${esc(b.w)}</span> — ${esc(P.name)} +1`
+    :`짝이 아니에요 — 카드를 다시 뒤집어요`;
+  if(ok){P.score++;P.got.push(a.w+' ↔ '+b.w);G.found.push([a.w,b.w]);G.left--;renderPlayers()}
+  setTimeout(()=>{
+    if(G!==g0)return;
+    if(ok){[a,b].forEach(c=>{c.gone=true;$('#c'+c.i).classList.add('gone')});if(!st.again)G.turn=(G.turn+1)%G.players.length}
+    else{[a,b].forEach(c=>{c.up=false;$('#c'+c.i).classList.remove('up','miss')});G.turn=(G.turn+1)%G.players.length}
+    G.open=[];
+    setTimeout(()=>{if(G!==g0)return;G.lock=false;renderTop();if(G.left===0)setTimeout(finish,400)},ok?300:450);
+  },ok?1500:2200);
 }
 function finish(){
   const ps=G.players.map(p=>p).sort((x,y)=>y.score-x.score),top=ps[0].score,wins=ps.filter(p=>p.score===top);
@@ -294,7 +271,7 @@ $('#again').onclick=startGame;
 $('#home').onclick=()=>{G=null;renderSetup();show('setup')};
 $('#btnQuit').onclick=()=>$('#veilQ').classList.add('on');
 $('#qNo').onclick=()=>$('#veilQ').classList.remove('on');
-$('#qYes').onclick=()=>{$('#veilQ').classList.remove('on');$('#veil').classList.remove('on');G=null;renderSetup();show('setup')};
+$('#qYes').onclick=()=>{$('#veilQ').classList.remove('on');G=null;renderSetup();show('setup')};
 renderSetup();
 }
 </script>
